@@ -1,0 +1,2502 @@
+<!doctype html>
+<title>Godown Stock</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B6E7A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-512.png">
+<link rel="apple-touch-icon" href="icon-512.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg:#F6F3EC; --surface:#FFFFFF; --surface-2:#EFEBE0; --border:#D9D3C2;
+    --text:#1B241F; --text-dim:#5C6660;
+    --accent:#0B6E7A; --accent-ink:#FFFFFF; --accent-soft:#0B6E7A1A;
+    --warn:#B8792A; --warn-soft:#B8792A1A;
+    --danger:#B8412E; --danger-soft:#B8412E1A;
+    --success:#357A50; --success-soft:#357A501A;
+    --shadow: 0 1px 2px rgba(20,24,20,.06), 0 4px 14px rgba(20,24,20,.06);
+    --radius: 10px;
+    --font-display:'Barlow Semi Condensed',system-ui,sans-serif;
+    --font-body:'IBM Plex Sans',system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12181A; --surface:#1A2224; --surface-2:#20292B; --border:#324042;
+      --text:#E7EFEC; --text-dim:#94A6A0;
+      --accent:#33BFD1; --accent-ink:#08181A; --accent-soft:#33BFD126;
+      --warn:#E3A659; --warn-soft:#E3A65926;
+      --danger:#E2705E; --danger-soft:#E2705E26;
+      --success:#6FCB93; --success-soft:#6FCB9326;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#12181A; --surface:#1A2224; --surface-2:#20292B; --border:#324042;
+    --text:#E7EFEC; --text-dim:#94A6A0;
+    --accent:#33BFD1; --accent-ink:#08181A; --accent-soft:#33BFD126;
+    --warn:#E3A659; --warn-soft:#E3A65926;
+    --danger:#E2705E; --danger-soft:#E2705E26;
+    --success:#6FCB93; --success-soft:#6FCB9326;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.35);
+  }
+  html{-webkit-text-size-adjust:100%; text-size-adjust:100%;}
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--font-body); -webkit-font-smoothing:antialiased;
+    padding-bottom:76px; font-size:16px;
+  }
+  h1,h2,h3{font-family:var(--font-display); font-weight:700; letter-spacing:.2px; text-wrap:balance; margin:0;}
+  .mono{font-family:var(--font-mono);}
+  button, input, select{font-family:inherit; font-size:16px;}
+  input, select, textarea{
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:10px 12px; width:100%;
+  }
+  input:focus, select:focus, textarea:focus, button:focus-visible{
+    outline:2px solid var(--accent); outline-offset:1px;
+  }
+  label{display:block; font-size:13px; color:var(--text-dim); margin-bottom:5px; font-weight:500;}
+  .field{margin-bottom:12px;}
+  .row{display:flex; gap:10px; flex-wrap:wrap;}
+  .row > *{flex:1; min-width:120px;}
+  button{
+    cursor:pointer; border:1px solid var(--border); background:var(--surface-2); color:var(--text);
+    border-radius:8px; padding:10px 16px; font-weight:600; transition:transform .06s ease;
+  }
+  button:active{transform:scale(.98);}
+  button.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+  button.primary:disabled{opacity:.45; cursor:not-allowed;}
+  button.ghost{background:transparent;}
+  button.small{padding:6px 10px; font-size:13px; border-radius:6px;}
+  button.danger-outline{color:var(--danger); border-color:var(--danger);}
+
+  header{
+    position:sticky; top:0; z-index:20; background:var(--bg);
+    border-bottom:1px solid var(--border);
+    padding:calc(14px + env(safe-area-inset-top, 0px)) 16px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  header h1{font-size:22px;}
+  .staffchip{
+    display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border);
+    border-radius:999px; padding:6px 12px 6px 6px; font-size:13px; cursor:pointer; color:var(--text);
+  }
+  .staffchip .dot{width:8px;height:8px;border-radius:50%;background:var(--success);}
+  .staffchip .dot.offline{background:var(--warn);}
+  .avatar{
+    width:22px;height:22px;border-radius:50%; background:var(--accent); color:var(--accent-ink);
+    display:flex;align-items:center;justify-content:center; font-size:11px; font-weight:700; font-family:var(--font-display);
+  }
+
+  main{max-width:900px; margin:0 auto; padding:16px; padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right));}
+  #loginScreen{
+    min-height:100vh; min-height:100dvh; display:flex; align-items:center; justify-content:center;
+    padding:20px; padding-top:calc(20px + env(safe-area-inset-top,0px)); padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));
+  }
+  #loginScreen[hidden]{display:none;}
+  .tabpanel[hidden]{display:none;}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow);}
+  .card + .card{margin-top:14px;}
+  .section-title{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px;}
+  .section-title h3{font-size:17px;}
+
+  .tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:14px;}
+  .tile{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; box-shadow:var(--shadow);}
+  .tile .num{font-family:var(--font-display); font-size:26px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .tile .lbl{font-size:12px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.4px;}
+  .tile.warn .num{color:var(--warn);} .tile.danger .num{color:var(--danger);}
+
+  .pill{display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; font-size:12px; font-weight:600;}
+  .pill.success{background:var(--success-soft); color:var(--success);}
+  .pill.warn{background:var(--warn-soft); color:var(--warn);}
+  .pill.danger{background:var(--danger-soft); color:var(--danger);}
+  .pill.neutral{background:var(--surface-2); color:var(--text-dim);}
+
+  .cat-group{margin-bottom:16px;}
+  .cat-head{font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim); font-weight:600; margin:0 0 8px 2px;}
+  .prod-row{
+    display:flex; align-items:center; gap:12px; padding:10px 4px; border-bottom:1px solid var(--border);
+  }
+  .prod-row:last-child{border-bottom:none;}
+  .prod-main{flex:1; min-width:0;}
+  .prod-name{font-weight:600;}
+  .prod-sub{font-size:12.5px; color:var(--text-dim);}
+  .prod-sku{font-family:var(--font-mono); font-size:12px; color:var(--text-dim);}
+  .prod-qty{text-align:right; font-family:var(--font-mono); font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .prod-qty .big{font-size:16px; font-weight:600;}
+  .prod-actions{display:flex; gap:6px; flex-wrap:wrap;}
+  .inline-form{margin-top:10px; padding-top:10px; border-top:1px dashed var(--border);}
+  .inline-form[hidden]{display:none;}
+
+  .scan-input-wrap{display:flex; gap:10px; align-items:flex-end;}
+  .scan-input-wrap input{font-family:var(--font-mono); font-size:18px; letter-spacing:.5px; padding:14px;}
+  .lookup-card{margin-top:12px;}
+  .lookup-empty{color:var(--text-dim); font-size:14px;}
+  .batch-list{display:flex; flex-direction:column; gap:8px;}
+  .batch-item{display:flex; align-items:center; gap:10px; background:var(--surface-2); border-radius:8px; padding:8px 10px;}
+  .batch-item .bi-name{flex:1; font-size:14px;}
+  .batch-item input[type=number]{width:70px; padding:6px 8px;}
+  .qty-steppers{display:flex; gap:6px; margin:8px 0;}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  th{text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-dim); padding:6px 8px; border-bottom:1px solid var(--border);}
+  td{padding:8px; border-bottom:1px solid var(--border); vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  .num-col{font-family:var(--font-mono); text-align:right; font-variant-numeric:tabular-nums;}
+
+  nav.tabbar{
+    position:fixed; bottom:0; left:0; right:0; z-index:30;
+    background:var(--surface); border-top:1px solid var(--border);
+    display:flex; padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    box-shadow:0 -2px 12px rgba(0,0,0,.06);
+  }
+  .navbtn{
+    flex:1; background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:2px;
+    color:var(--text-dim); font-size:11px; font-weight:600; padding:6px 2px; border-radius:8px;
+  }
+  .navbtn .ic{font-size:19px;}
+  .navbtn.active{color:var(--accent);}
+
+  .overlay{
+    position:fixed; inset:0; background:rgba(10,14,12,.55); z-index:100;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .overlay[hidden]{display:none;}
+  .overlay .card{max-width:360px; width:100%;}
+
+  #toast{
+    position:fixed; left:50%; bottom:90px; transform:translateX(-50%) translateY(20px);
+    background:var(--text); color:var(--bg); padding:10px 18px; border-radius:999px; font-size:13.5px;
+    opacity:0; transition:opacity .25s ease, transform .25s ease; z-index:200; pointer-events:none;
+    max-width:90vw; text-align:center;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  .banner{background:var(--warn-soft); color:var(--warn); border:1px solid var(--warn); border-radius:8px; padding:10px 12px; font-size:13.5px; margin-bottom:14px;}
+  .banner[hidden]{display:none;}
+  .warn-inline{background:var(--danger-soft); color:var(--danger); border-radius:8px; padding:8px 10px; font-size:13px; margin-top:8px;}
+  .barcode-wrap{background:#fff; border-radius:6px; padding:4px 6px; display:inline-block;}
+  .barcode-wrap svg{display:block;}
+  .checkbox-row{display:flex; align-items:center; gap:8px;}
+  .checkbox-row input{width:auto;}
+  .empty-state{color:var(--text-dim); font-size:14px; text-align:center; padding:24px 8px;}
+  .filters{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;}
+  .filters > *{flex:1; min-width:130px;}
+
+  #printSheet{display:none;}
+  /* Sized for a TSC DA310 thermal label printer loaded with 50mm x 25mm die-cut labels: one label
+     per printed "page" so the printer's own driver advances the roll to the next label. If a
+     different roll size is loaded later, this @page size and .label box are the two things to change. */
+  @page{ size:50mm 25mm; margin:0; }
+  @media print{
+    body *{visibility:hidden;}
+    #printSheet, #printSheet *{visibility:visible;}
+    #printSheet{display:block; position:absolute; top:0; left:0; width:100%;}
+    .label-grid{display:block;}
+    .label{
+      width:50mm; height:25mm; box-sizing:border-box; overflow:hidden;
+      padding:1.5mm 2mm; margin:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; font-family:var(--font-mono);
+      page-break-after:always; break-after:page;
+    }
+    .label:last-child{page-break-after:auto; break-after:auto;}
+    .label .lname{
+      font-family:var(--font-body); font-weight:700; font-size:7.5pt; line-height:1.1;
+      margin-bottom:0.5mm; width:100%;
+      display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+    }
+    .label .lsub{font-size:6pt; color:#000; margin-bottom:0.8mm; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+    .label .pl-bc{max-width:44mm; height:auto;}
+  }
+</style>
+
+<div id="loginScreen">
+  <div class="card" style="max-width:340px; width:100%;">
+    <h1 style="font-size:24px; margin-bottom:4px;">Godown Stock</h1>
+    <p style="color:var(--text-dim); font-size:13.5px; margin:0 0 18px;">Sign in with the user ID your admin gave you.</p>
+    <div class="field"><label for="loginUser">User ID</label><input id="loginUser" type="text" autocomplete="username" autocapitalize="off" /></div>
+    <div class="field"><label for="loginPass">Password</label><input id="loginPass" type="password" autocomplete="current-password" /></div>
+    <div id="loginError" class="warn-inline" hidden></div>
+    <button class="primary" id="loginBtn" type="button" style="width:100%; margin-top:6px;">Log in</button>
+    <p style="color:var(--text-dim); font-size:12px; margin:14px 0 0;">No login yet? Ask whoever manages this app to create one for you.</p>
+  </div>
+</div>
+
+<div id="appRoot" hidden>
+<header>
+  <div>
+    <h1>Godown Stock</h1>
+  </div>
+  <button class="staffchip" id="staffChip" type="button">
+    <span class="dot" id="syncDot"></span>
+    <span class="avatar" id="staffAvatar">?</span>
+    <span id="staffLabel">Account</span>
+  </button>
+</header>
+
+<main>
+  <div class="banner" id="fallbackBanner" hidden>Live multi-device sync isn't set up yet (Firebase config missing/unreachable) &mdash; changes are being saved on this device only.</div>
+
+  <section class="tabpanel" id="tab-dashboard">
+    <div class="tiles" id="tiles"></div>
+    <div class="card">
+      <div class="section-title">
+        <h3>Live stock</h3>
+        <button class="small" id="exportStockBtn" type="button">Export CSV</button>
+      </div>
+      <div class="filters">
+        <input id="stockSearch" type="text" placeholder="Search product, brand, SKU..." />
+      </div>
+      <div id="stockList"></div>
+    </div>
+  </section>
+
+  <section class="tabpanel" id="tab-in" hidden>
+    <div class="card">
+      <div class="section-title"><h3>Generate unique barcodes</h3></div>
+      <p style="color:var(--text-dim); font-size:13px; margin:0 0 10px;">For a fresh delivery, generate one unique barcode per carton or per packet and print labels to stick on each. This only prints labels &mdash; nothing is added to stock yet. Scan each label below (or in Scan In) as it actually arrives to bring it into stock; each label can only be received once, and only used once again when it's later scanned out.</p>
+      <div class="row">
+        <div class="field">
+          <label for="genUnitProduct">Product</label>
+          <select id="genUnitProduct"></select>
+        </div>
+        <div class="field">
+          <label for="genUnitType">Barcode for</label>
+          <select id="genUnitType">
+            <option value="carton">Whole carton</option>
+            <option value="packet">Single packet</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="genUnitCount" id="genUnitCountLabel">Number of cartons</label>
+          <input id="genUnitCount" type="number" min="1" value="1" />
+        </div>
+      </div>
+      <button class="primary" id="genUnitBtn" type="button">Generate labels</button>
+      <div id="genUnitResult" style="margin-top:10px;"></div>
+    </div>
+    <div class="card">
+      <div class="section-title"><h3>Scan in &mdash; stock received</h3></div>
+      <div class="scan-input-wrap">
+        <div style="flex:1">
+          <label for="inCode">Scan or type product code, then press Enter</label>
+          <input id="inCode" type="text" autocomplete="off" placeholder="e.g. BD-4F2A" />
+        </div>
+        <button class="small" id="inCamBtn" type="button">&#128247; Camera</button>
+      </div>
+      <div id="inLookup" class="lookup-card"></div>
+    </div>
+    <div class="card">
+      <div class="section-title"><h3>This batch</h3><span class="pill neutral" id="inBatchCount">0 items</span></div>
+      <div class="batch-list" id="inBatchList"></div>
+      <div class="row" style="margin-top:12px;">
+        <button class="primary" id="inConfirmBtn" type="button" disabled>Confirm inbound</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title"><h3>Recorded just now</h3></div>
+      <div id="inRecent" class="empty-state">Nothing recorded yet this session.</div>
+    </div>
+  </section>
+
+  <section class="tabpanel" id="tab-out" hidden>
+    <div class="card">
+      <div class="section-title"><h3>Scan out &mdash; packing a parcel</h3></div>
+      <div class="scan-input-wrap">
+        <div style="flex:1">
+          <label for="outCode">Scan or type product code, then press Enter</label>
+          <input id="outCode" type="text" autocomplete="off" placeholder="e.g. BD-4F2A" />
+        </div>
+        <button class="small" id="outCamBtn" type="button">&#128247; Camera</button>
+      </div>
+      <div id="outLookup" class="lookup-card"></div>
+    </div>
+    <div class="card">
+      <div class="section-title"><h3>Items in this parcel</h3><span class="pill neutral" id="outBatchCount">0 items</span></div>
+      <div class="batch-list" id="outBatchList"></div>
+      <div id="outWarnings"></div>
+      <div class="field" style="margin-top:12px;">
+        <label for="outAwb">AWB / tracking number</label>
+        <input id="outAwb" type="text" autocomplete="off" placeholder="e.g. 14523987650" />
+      </div>
+      <div class="row">
+        <button class="primary" id="outConfirmBtn" type="button" disabled>Confirm shipment</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title"><h3>Recorded just now</h3></div>
+      <div id="outRecent" class="empty-state">Nothing recorded yet this session.</div>
+    </div>
+  </section>
+
+  <section class="tabpanel" id="tab-products" hidden>
+    <div class="card">
+      <div class="section-title">
+        <h3>Products</h3>
+        <button class="small primary" id="toggleAddProduct" type="button">+ Add product</button>
+      </div>
+      <div class="inline-form" id="addProductForm" hidden>
+        <div class="row">
+          <div class="field">
+            <label for="npCategory">Category</label>
+            <select id="npCategory"></select>
+          </div>
+          <div class="field">
+            <label for="npBrand">Brand</label>
+            <input id="npBrand" list="brandList" placeholder="e.g. Freshkins" />
+            <datalist id="brandList"></datalist>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="npName">Name of the product</label>
+            <input id="npName" placeholder="e.g. Soft Baby Pants" />
+          </div>
+          <div class="field">
+            <label for="npVariant">Colour / variant (optional)</label>
+            <input id="npVariant" placeholder="e.g. Print" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="npSize">Size</label>
+            <input id="npSize" placeholder="e.g. L" />
+          </div>
+          <div class="field">
+            <label for="npPcsPerPack">No. of pcs in the pack</label>
+            <input id="npPcsPerPack" type="number" min="1" value="1" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="npUnitsPerCarton">Packets per carton</label>
+            <input id="npUnitsPerCarton" type="number" min="1" value="1" />
+          </div>
+          <div class="field">
+            <label for="npOpeningQty">Opening stock (packets)</label>
+            <input id="npOpeningQty" type="number" min="0" value="0" />
+          </div>
+        </div>
+        <div class="scan-input-wrap">
+          <div style="flex:1">
+            <label for="npBarcode">Existing barcode on the packet (optional)</label>
+            <input id="npBarcode" type="text" autocomplete="off" placeholder="Scan the packet's own printed barcode, if it has one" />
+          </div>
+          <button class="small" id="npBarcodeCamBtn" type="button">&#128247; Camera</button>
+        </div>
+        <p style="color:var(--text-dim); font-size:12.5px; margin:2px 0 0;">If the packet already has a barcode printed on it, scan or type it here &mdash; loose packets picked in Scan Out will then be recognised by that barcode directly, no app-printed sticker needed.</p>
+        <div class="row" style="margin-top:10px;">
+          <button class="primary" id="saveProductBtn" type="button">Save &amp; generate barcode</button>
+          <button class="ghost" id="cancelAddProduct" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="printBar" hidden>
+      <div class="row" style="align-items:center;">
+        <span id="printSelCount" class="pill neutral">0 selected</span>
+        <div class="field" style="max-width:140px;"><label for="printQtyEach">Labels each</label><input id="printQtyEach" type="number" min="1" value="1" /></div>
+        <button class="primary" id="printSelectedBtn" type="button">Print labels</button>
+      </div>
+    </div>
+    <div id="productGroups"></div>
+  </section>
+
+  <section class="tabpanel" id="tab-awb" hidden>
+    <div class="card">
+      <div class="section-title"><h3>Find a shipment by AWB</h3></div>
+      <div class="row">
+        <input id="awbQuery" type="text" placeholder="Enter AWB / tracking number" />
+        <button class="primary" id="awbSearchBtn" type="button">Search</button>
+      </div>
+      <div id="awbResult" style="margin-top:14px;"></div>
+    </div>
+  </section>
+
+  <section class="tabpanel" id="tab-returns" hidden>
+    <div class="card">
+      <div class="section-title"><h3>Process a return</h3></div>
+      <p style="color:var(--text-dim); font-size:13px; margin:0 0 10px;">Scan the product, carton, or packet code on the returned item, then say whether it's good enough to go back into sellable stock.</p>
+      <div class="scan-input-wrap">
+        <div style="flex:1">
+          <label for="retCode">Scan or type the code, then press Enter</label>
+          <input id="retCode" type="text" autocomplete="off" placeholder="e.g. BD-4F2A or BD-4F2A-C00007" />
+        </div>
+        <button class="small" id="retCamBtn" type="button">&#128247; Camera</button>
+      </div>
+      <div id="retLookup" class="lookup-card"></div>
+    </div>
+    <div class="card">
+      <div class="section-title"><h3>No readable barcode?</h3></div>
+      <p style="color:var(--text-dim); font-size:13px; margin:0 0 10px;">Log the return against a product directly, without scanning.</p>
+      <div class="row">
+        <div class="field"><label for="retManualProduct">Product</label><select id="retManualProduct"></select></div>
+        <div class="field"><label for="retManualQty">Qty (packets)</label><input id="retManualQty" type="number" min="1" value="1" /></div>
+        <div class="field"><label for="retManualAwb">AWB (optional)</label><input id="retManualAwb" type="text" autocomplete="off" placeholder="e.g. 14523987650" /></div>
+      </div>
+      <div class="row">
+        <button class="primary" id="retManualGoodBtn" type="button">&#9989; Good &mdash; return to stock</button>
+        <button class="danger-outline" id="retManualBadBtn" type="button">&#9888; Damaged / wrong item</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title"><h3>Recent returns</h3></div>
+      <div id="retRecent" class="empty-state">Nothing recorded yet this session.</div>
+    </div>
+  </section>
+
+  <section class="tabpanel" id="tab-inprogress" hidden>
+    <div class="card">
+      <div class="section-title"><h3>Open a carton</h3></div>
+      <p style="color:var(--text-dim); font-size:13px; margin:0 0 10px;">Scan a carton's own barcode to break it into loose packets. Once opened, pick individual packets in Scan Out using the product's regular pre-printed barcode.</p>
+      <div class="scan-input-wrap">
+        <div style="flex:1">
+          <label for="openCartonCode">Scan or type the carton code, then press Enter</label>
+          <input id="openCartonCode" type="text" autocomplete="off" placeholder="e.g. BD-4F2A-C00007" />
+        </div>
+        <button class="small" id="openCartonCamBtn" type="button">&#128247; Camera</button>
+      </div>
+      <div id="openCartonLookup" class="lookup-card"></div>
+    </div>
+    <div class="card">
+      <div class="section-title"><h3>Loose packets ready to pick</h3></div>
+      <p style="color:var(--text-dim); font-size:13px; margin:0 0 10px;">These came from opened cartons and share the product's own barcode &mdash; pick them from Scan Out like any normal item.</p>
+      <div id="inProgressList" class="empty-state">No cartons opened yet.</div>
+    </div>
+    <div class="card">
+      <div class="section-title"><h3>Recently opened</h3></div>
+      <div id="openRecent" class="empty-state">Nothing recorded yet this session.</div>
+    </div>
+  </section>
+
+  <section class="tabpanel" id="tab-history" hidden>
+    <div class="card">
+      <div class="section-title">
+        <h3>History</h3>
+        <button class="small" id="exportHistoryBtn" type="button">Export CSV</button>
+      </div>
+      <div class="filters">
+        <select id="histType">
+          <option value="">All types</option>
+          <option value="in">In</option>
+          <option value="out">Out</option>
+          <option value="adjust">Adjust</option>
+          <option value="return">Return</option>
+          <option value="open">Open carton</option>
+        </select>
+        <input id="histSearch" type="text" placeholder="Search SKU, AWB, staff..." />
+      </div>
+      <div class="table-wrap"><table id="histTable"><thead><tr><th>When</th><th>Type</th><th>Product</th><th class="num-col">Qty</th><th>AWB</th><th>Staff</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="tabpanel" id="tab-admin" hidden>
+    <div class="card">
+      <div class="section-title"><h3>Add a login</h3></div>
+      <div class="row">
+        <div class="field"><label for="newUserId">User ID</label><input id="newUserId" type="text" autocapitalize="off" placeholder="e.g. ramesh" /></div>
+        <div class="field"><label for="newUserPass">Password</label><input id="newUserPass" type="text" placeholder="At least 6 characters" /></div>
+        <div class="field" style="max-width:140px;"><label for="newUserRole">Role</label><select id="newUserRole"><option value="staff">Staff</option><option value="admin">Admin</option></select></div>
+      </div>
+      <button class="primary" id="createUserBtn" type="button">Create login</button>
+      <div id="createUserMsg" class="warn-inline" hidden></div>
+    </div>
+    <div class="card">
+      <div class="section-title"><h3>Logins</h3></div>
+      <div id="userList"></div>
+      <p style="color:var(--text-dim); font-size:12px; margin:14px 0 0;">Disabling a login blocks it everywhere immediately. If someone forgets their password, disable their old login and create a new one for them — this app can't force-set a password on an existing login without a paid backend.</p>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button class="navbtn active" data-tab="dashboard" type="button"><span class="ic">&#9635;</span>Stock</button>
+  <button class="navbtn" data-tab="in" type="button"><span class="ic">&#8600;</span>Scan in</button>
+  <button class="navbtn" data-tab="out" type="button"><span class="ic">&#8599;</span>Scan out</button>
+  <button class="navbtn" data-tab="products" type="button"><span class="ic">&#127991;</span>Products</button>
+  <button class="navbtn" data-tab="awb" type="button"><span class="ic">&#128269;</span>AWB</button>
+  <button class="navbtn" data-tab="returns" type="button"><span class="ic">&#8617;</span>Returns</button>
+  <button class="navbtn" data-tab="inprogress" type="button"><span class="ic">&#9203;</span>In Progress</button>
+  <button class="navbtn" data-tab="history" type="button"><span class="ic">&#128337;</span>History</button>
+  <button class="navbtn" id="adminNavBtn" data-tab="admin" type="button" hidden><span class="ic">&#128272;</span>Admin</button>
+</nav>
+</div>
+
+<div class="overlay" id="nameOverlay" hidden>
+  <div class="card" id="fallbackNameCard" hidden>
+    <h3 style="margin-bottom:10px;">Who's using this?</h3>
+    <p style="color:var(--text-dim); font-size:13.5px; margin-top:0;">Your name is attached to every scan so the team knows who moved what.</p>
+    <div class="field"><input id="nameInput" type="text" placeholder="Your name" /></div>
+    <button class="primary" id="nameSaveBtn" type="button" style="width:100%;">Continue</button>
+  </div>
+  <div class="card" id="acctCard" hidden>
+    <h3 style="margin-bottom:2px;" id="acctUserLabel">Account</h3>
+    <p style="color:var(--text-dim); font-size:13px; margin:0 0 14px;" id="acctRoleLabel"></p>
+    <div class="section-title"><h3 style="font-size:14px;">Change my password</h3></div>
+    <div class="field"><label for="acctCurPass">Current password</label><input id="acctCurPass" type="password" autocomplete="current-password" /></div>
+    <div class="field"><label for="acctNewPass">New password</label><input id="acctNewPass" type="password" autocomplete="new-password" placeholder="At least 6 characters" /></div>
+    <button class="small" id="acctChangePassBtn" type="button">Update password</button>
+    <div id="acctMsg" class="warn-inline" hidden style="margin-top:10px;"></div>
+    <button class="danger-outline" id="logoutBtn" type="button" style="width:100%; margin-top:18px;">Log out</button>
+  </div>
+</div>
+
+<div class="overlay" id="camOverlay" hidden>
+  <div class="card" style="max-width:440px;">
+    <div class="section-title"><h3>Scan barcode</h3><button class="small ghost" id="camCloseBtn" type="button">Close</button></div>
+    <video id="camVideo" playsinline autoplay muted style="width:100%;border-radius:8px;background:#000;max-height:58vh;object-fit:cover;"></video>
+    <p id="camStatus" style="color:var(--text-dim); font-size:13px; margin:10px 0 0;">Starting camera&hellip;</p>
+    <p style="color:var(--text-dim); font-size:12px; margin:6px 0 0;">Each scan adds 1 packet &mdash; keep pointing at the next barcode, or close when done.</p>
+  </div>
+</div>
+
+<div class="overlay" id="confirmOverlay" hidden>
+  <div class="card">
+    <h3 id="confirmTitle" style="margin-bottom:10px;">Are you sure?</h3>
+    <p id="confirmMsg" style="color:var(--text-dim); font-size:13.5px; margin:0 0 16px; white-space:pre-line;"></p>
+    <div class="row">
+      <button class="ghost" id="confirmCancelBtn" type="button">Cancel</button>
+      <button class="danger-outline" id="confirmOkBtn" type="button">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="printSheet">
+  <div class="label-grid" id="labelGrid"></div>
+</div>
+
+<script>
+(function(){
+  var CATEGORIES = [
+    {code:'BD', label:'Baby Diaper (Tape/Velcro)'},
+    {code:'BP', label:'Baby Pants'},
+    {code:'AD', label:'Adult Diaper & Pants'},
+    {code:'SN', label:'Sanitary Napkin / Pads'},
+    {code:'UP', label:'Underpads'},
+    {code:'WW', label:'Baby Wet Wipes'},
+    {code:'BB', label:'Bedbaths'}
+  ];
+  var BRANDS = ['Freshkins','Acquish','Kredanz','W/S','Kiddi Love','OSAN','G-ABC'];
+
+  // ---- Fill these in with your own Firebase project's Web App config ----
+  // (Firebase console -> Project settings -> Your apps -> SDK setup and configuration)
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyCj7b7i1hvmtOUUO3_nf7rypGWhfsKrFmA",
+    authDomain: "godown-stock-9fcaa.firebaseapp.com",
+    projectId: "godown-stock-9fcaa",
+    storageBucket: "godown-stock-9fcaa.firebasestorage.app",
+    messagingSenderId: "456756323654",
+    appId: "1:456756323654:web:44b2d79601217723eab147"
+  };
+  // Staff log in with a plain user ID, not a real email — this fixed suffix turns "ramesh" into
+  // the email address Firebase Auth requires under the hood. Never shown to anyone.
+  var AUTH_EMAIL_SUFFIX = '@godown-stock.local';
+
+  var db=null, usingFallback=false;
+  var currentUser=null; // {uid, username, role, disabled} once logged in (live mode only)
+  var products=new Map();
+  var currentTab='dashboard';
+  var batchIn=[], batchOut=[];
+  var recentIn=[], recentOut=[];
+  var todayEntries=[];
+  var histCache=null;
+  var clientId = localStorage.getItem('og_client_id');
+  if(!clientId){ clientId='c-'+Math.random().toString(36).slice(2,10); localStorage.setItem('og_client_id', clientId); }
+  var staffName = localStorage.getItem('og_staff_name') || '';
+
+  function todayStr(){ return new Date().toISOString().slice(0,10); }
+  function nowIso(){ return new Date().toISOString(); }
+  function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function toast(msg){
+    var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+    clearTimeout(t._h); t._h=setTimeout(function(){t.classList.remove('show');},2600);
+  }
+  // Reusable yes/no overlay (the app never uses native window.confirm) — resolves true/false.
+  function askConfirm(title, msg){
+    return new Promise(function(resolve){
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMsg').textContent = msg;
+      var overlay=document.getElementById('confirmOverlay');
+      var okBtn=document.getElementById('confirmOkBtn');
+      var cancelBtn=document.getElementById('confirmCancelBtn');
+      overlay.hidden=false;
+      function cleanup(result){
+        overlay.hidden=true;
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        resolve(result);
+      }
+      function onOk(){ cleanup(true); }
+      function onCancel(){ cleanup(false); }
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+    });
+  }
+  function catLabel(code){ var c=CATEGORIES.filter(function(x){return x.code===code;})[0]; return c?c.label:code; }
+  function productLabel(p){
+    var parts=[p.brand];
+    if(p.name) parts.push(p.name);
+    if(p.variant) parts.push(p.variant);
+    if(p.size) parts.push('Size '+p.size);
+    return parts.filter(Boolean).join(' • ');
+  }
+  function cartonsText(p){
+    var upc = p.unitsPerCarton>0 ? p.unitsPerCarton : 0;
+    if(!upc) return (p.qty||0)+' pc';
+    var c=Math.floor((p.qty||0)/upc), r=(p.qty||0)%upc;
+    return c+' ctn'+(r? ' + '+r+' pc':'');
+  }
+  function stockStatus(p){
+    var q=p.qty||0, low=p.lowStockAt!=null?p.lowStockAt:(p.unitsPerCarton||0);
+    if(q<=0) return {cls:'danger', label:'Out of stock'};
+    if(low>0 && q<=low) return {cls:'warn', label:'Low'};
+    return {cls:'success', label:'In stock'};
+  }
+  function genSku(code){
+    var sku;
+    do { sku = code+'-'+Math.random().toString(36).slice(2,6).toUpperCase(); } while(products.has(sku));
+    return sku;
+  }
+  // ---------------- Audio / vibration feedback ----------------
+  var AudioFX = (function(){
+    var ctx;
+    function getCtx(){
+      if(!ctx){ try{ ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ ctx=null; } }
+      if(ctx && ctx.state==='suspended'){ try{ ctx.resume(); }catch(e){} }
+      return ctx;
+    }
+    function tone(freq, dur, type){
+      var c=getCtx(); if(!c) return;
+      try{
+        var osc=c.createOscillator(), gain=c.createGain();
+        osc.type=type||'sine'; osc.frequency.value=freq;
+        gain.gain.setValueAtTime(0.0001, c.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.28, c.currentTime+0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, c.currentTime+dur);
+        osc.connect(gain); gain.connect(c.destination);
+        osc.start(); osc.stop(c.currentTime+dur+0.02);
+      }catch(e){}
+    }
+    return {
+      success: function(){ tone(1046,0.09); if(navigator.vibrate){ try{ navigator.vibrate(40); }catch(e){} } },
+      error: function(){ tone(220,0.22,'square'); if(navigator.vibrate){ try{ navigator.vibrate([70,60,70]); }catch(e){} } }
+    };
+  })();
+
+  function renderBarcode(el, sku, opts){
+    if(typeof JsBarcode === 'function'){
+      try{
+        JsBarcode(el, sku, Object.assign({format:'CODE128', displayValue:true, fontSize:12, margin:4, height:40, width:1.6, font:'IBM Plex Mono'}, opts||{}));
+        return;
+      }catch(e){ console.warn('barcode render failed', e); }
+    }
+    el.outerHTML = '<div class="mono" style="font-weight:600;">'+esc(sku)+'</div>';
+  }
+
+  // ---------------- Backend ----------------
+  var Backend = {
+    // No more anonymous sign-in: this only stands up the Firestore connection. Whether the person
+    // gets the login screen (live mode, real accounts) or goes straight in (fallback, single device,
+    // no login concept) is decided by the boot code based on the mode this resolves to.
+    init: function(){
+      var configured = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf('PASTE_')!==0;
+      function goFallback(){
+        db=null; usingFallback=true;
+        document.getElementById('fallbackBanner').hidden=false;
+        document.getElementById('syncDot').classList.add('offline');
+        return 'fallback';
+      }
+      function goLive(){
+        usingFallback=false;
+        document.getElementById('fallbackBanner').hidden=true;
+        document.getElementById('syncDot').classList.remove('offline');
+        return 'live';
+      }
+      if(!configured || typeof firebase==='undefined'){ return Promise.resolve(goFallback()); }
+      try{
+        if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+        db = firebase.firestore();
+        return Promise.resolve(goLive());
+      }catch(e){
+        console.warn('firebase init failed', e);
+        return Promise.resolve(goFallback());
+      }
+    },
+    subscribeProducts: function(cb){
+      if(db){
+        return db.collection('products').onSnapshot(function(snap){
+          var map=new Map();
+          snap.forEach(function(d){ map.set(d.id, d.data()); });
+          cb(map);
+        }, function(err){ console.warn('products sub error', err); });
+      }
+      var read=function(){
+        var raw={}; try{ raw=JSON.parse(localStorage.getItem('og_fb_products')||'{}'); }catch(e){}
+        cb(new Map(Object.keys(raw).map(function(k){return [k, raw[k]];})));
+      };
+      read();
+      window.addEventListener('storage', read);
+      window.addEventListener('og-fb-products-changed', read);
+      return function(){ window.removeEventListener('storage', read); window.removeEventListener('og-fb-products-changed', read); };
+    },
+    createProduct: function(product){
+      if(db) return db.collection('products').doc(product.sku).set(product);
+      var raw={}; try{ raw=JSON.parse(localStorage.getItem('og_fb_products')||'{}'); }catch(e){}
+      raw[product.sku]=product;
+      localStorage.setItem('og_fb_products', JSON.stringify(raw));
+      window.dispatchEvent(new Event('og-fb-products-changed'));
+      return Promise.resolve();
+    },
+    updateProductMeta: function(sku, patch){
+      if(db) return db.collection('products').doc(sku).update(patch);
+      var raw={}; try{ raw=JSON.parse(localStorage.getItem('og_fb_products')||'{}'); }catch(e){}
+      if(raw[sku]) Object.assign(raw[sku], patch);
+      localStorage.setItem('og_fb_products', JSON.stringify(raw));
+      window.dispatchEvent(new Event('og-fb-products-changed'));
+      return Promise.resolve();
+    },
+    adjustQty: function(sku, delta){
+      if(db){
+        var ref=db.collection('products').doc(sku);
+        return db.runTransaction(function(tx){
+          return tx.get(ref).then(function(snap){
+            var data=snap.data()||{};
+            var newQty=(data.qty||0)+delta;
+            tx.update(ref, {qty:newQty, updatedAt:nowIso()});
+            return newQty;
+          });
+        });
+      }
+      var raw={}; try{ raw=JSON.parse(localStorage.getItem('og_fb_products')||'{}'); }catch(e){}
+      if(!raw[sku]) return Promise.resolve(null);
+      raw[sku].qty=(raw[sku].qty||0)+delta; raw[sku].updatedAt=nowIso();
+      localStorage.setItem('og_fb_products', JSON.stringify(raw));
+      window.dispatchEvent(new Event('og-fb-products-changed'));
+      return Promise.resolve(raw[sku].qty);
+    },
+    appendMovements: function(dateStr, entries){
+      if(db){
+        var ref=db.collection('movements').doc(dateStr);
+        return db.runTransaction(function(tx){
+          return tx.get(ref).then(function(snap){
+            var data = snap.exists ? (snap.data()||{}) : {};
+            var newEntries = (data.entries||[]).concat(entries);
+            tx.set(ref, {entries:newEntries});
+          });
+        });
+      }
+      var raw={}; try{ raw=JSON.parse(localStorage.getItem('og_fb_movements')||'{}'); }catch(e){}
+      raw[dateStr]=(raw[dateStr]||[]).concat(entries);
+      localStorage.setItem('og_fb_movements', JSON.stringify(raw));
+      return Promise.resolve();
+    },
+    getAllMovementDays: function(){
+      if(db){
+        return db.collection('movements').get().then(function(snap){
+          var out=[];
+          snap.forEach(function(d){ out.push({id:d.id, entries:(d.data()||{}).entries||[]}); });
+          return out.sort(function(a,b){ return b.id<a.id?-1:(b.id>a.id?1:0); });
+        });
+      }
+      var raw={}; try{ raw=JSON.parse(localStorage.getItem('og_fb_movements')||'{}'); }catch(e){}
+      return Promise.resolve(Object.keys(raw).map(function(id){return {id:id, entries:raw[id]};})
+        .sort(function(a,b){ return b.id<a.id?-1:(b.id>a.id?1:0); }));
+    },
+    subscribeToday: function(cb){
+      var day=todayStr();
+      if(db){
+        return db.collection('movements').doc(day).onSnapshot(function(snap){
+          cb((snap.data()||{}).entries||[]);
+        }, function(err){ console.warn('today sub error', err); });
+      }
+      var read=function(){
+        var raw={}; try{ raw=JSON.parse(localStorage.getItem('og_fb_movements')||'{}'); }catch(e){}
+        cb(raw[day]||[]);
+      };
+      read();
+      window.addEventListener('storage', read);
+      return function(){ window.removeEventListener('storage', read); };
+    },
+    saveCsv: function(filename, csv){
+      try{
+        var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+        return Promise.resolve(true);
+      }catch(e){ console.warn('csv download failed', e); return Promise.resolve(false); }
+    },
+    // ---- Per-carton / per-packet unique barcodes ----
+    // level: 'carton' (code suffix -Cnnnnn, 1 unit = unitsPerCarton packets) or 'packet' (-Pnnnnn, 1 unit = 1 packet)
+    // Generates codes only — a fresh unit is 'pending' (label printed, not yet received) and adds
+    // nothing to stock. Backend.receiveUnit() is what brings it into stock, when it's actually scanned in.
+    generateUnits: function(sku, count, level, staffName){
+      var col = level==='packet' ? 'packets' : 'cartons';
+      var prefix = level==='packet' ? 'P' : 'C';
+      var seqField = level==='packet' ? 'nextPacketSeq' : 'nextCartonSeq';
+      if(db){
+        var pref=db.collection('products').doc(sku);
+        return db.runTransaction(function(tx){
+          return tx.get(pref).then(function(psnap){
+            var pdata=psnap.data()||{};
+            var startSeq=pdata[seqField]||0;
+            var qtyPer = level==='packet' ? 1 : (pdata.unitsPerCarton||1);
+            var codes=[];
+            for(var i=0;i<count;i++){ codes.push(sku+'-'+prefix+String(startSeq+i+1).padStart(5,'0')); }
+            codes.forEach(function(code){
+              tx.set(db.collection(col).doc(code), {code:code, sku:sku, level:level, qtyPackets:qtyPer, createdAt:nowIso(), createdBy:staffName||'unknown', status:'pending'});
+            });
+            var patch={};
+            patch[seqField]=startSeq+count;
+            tx.update(pref, patch);
+            return codes;
+          });
+        });
+      }
+      var raw={}; try{ raw=JSON.parse(localStorage.getItem('og_fb_products')||'{}'); }catch(e){}
+      var p=raw[sku];
+      if(!p) return Promise.reject(new Error('Unknown product'));
+      var startSeq=p[seqField]||0, qtyPer = level==='packet' ? 1 : (p.unitsPerCarton||1), codes=[];
+      for(var i=0;i<count;i++){ codes.push(sku+'-'+prefix+String(startSeq+i+1).padStart(5,'0')); }
+      var storeKey = col==='packets' ? 'og_fb_packets' : 'og_fb_cartons';
+      var craw={}; try{ craw=JSON.parse(localStorage.getItem(storeKey)||'{}'); }catch(e){}
+      codes.forEach(function(code){ craw[code]={code:code, sku:sku, level:level, qtyPackets:qtyPer, createdAt:nowIso(), createdBy:staffName||'unknown', status:'pending'}; });
+      localStorage.setItem(storeKey, JSON.stringify(craw));
+      p[seqField]=startSeq+count;
+      raw[sku]=p; localStorage.setItem('og_fb_products', JSON.stringify(raw));
+      window.dispatchEvent(new Event('og-fb-products-changed'));
+      return Promise.resolve(codes);
+    },
+    // Brings a 'pending' (generated but not yet received) carton/packet into stock: flips it to
+    // 'in_stock' and adds its packet count to the product's qty. This is the actual inward movement.
+    receiveUnit: function(code, staffName){
+      var m=/-(C|P)\d{5}$/.exec(code||'');
+      if(!m) return Promise.resolve({ok:false, reason:'not_found'});
+      var col = m[1]==='P' ? 'packets' : 'cartons';
+      if(db){
+        var cref=db.collection(col).doc(code);
+        return db.runTransaction(function(tx){
+          return tx.get(cref).then(function(s){
+            if(!s.exists) return {ok:false, reason:'not_found'};
+            var d=s.data();
+            if(d.status!=='pending') return {ok:false, reason:'already_used', data:d};
+            var pref=db.collection('products').doc(d.sku);
+            return tx.get(pref).then(function(psnap){
+              var pdata=psnap.data()||{};
+              var qtyPackets=d.qtyPackets||1;
+              tx.update(cref, {status:'in_stock', receivedAt:nowIso(), staffIn:staffName||'unknown'});
+              tx.update(pref, {qty:(pdata.qty||0)+qtyPackets, updatedAt:nowIso()});
+              return {ok:true, sku:d.sku, qtyPackets:qtyPackets};
+            });
+          });
+        });
+      }
+      var storeKey = col==='packets' ? 'og_fb_packets' : 'og_fb_cartons';
+      var raw={}; try{ raw=JSON.parse(localStorage.getItem(storeKey)||'{}'); }catch(e){}
+      var d=raw[code];
+      if(!d) return Promise.resolve({ok:false, reason:'not_found'});
+      if(d.status!=='pending') return Promise.resolve({ok:false, reason:'already_used', data:d});
+      var praw={}; try{ praw=JSON.parse(localStorage.getItem('og_fb_products')||'{}'); }catch(e){}
+      var p=praw[d.sku]||{};
+      var qtyPackets=d.qtyPackets||1;
+      d.status='in_stock'; d.receivedAt=nowIso(); d.staffIn=staffName||'unknown';
+      raw[code]=d; localStorage.setItem(storeKey, JSON.stringify(raw));
+      p.qty=(p.qty||0)+qtyPackets;
+      praw[d.sku]=p; localStorage.setItem('og_fb_products', JSON.stringify(praw));
+      window.dispatchEvent(new Event('og-fb-products-changed'));
+      return Promise.resolve({ok:true, sku:d.sku, qtyPackets:qtyPackets});
+    },
+    // Resolves any carton- or packet-level code to its record, wherever it lives.
+    getUnit: function(code){
+      var m=/-(C|P)\d{5}$/.exec(code||'');
+      if(!m) return Promise.resolve(null);
+      var col = m[1]==='P' ? 'packets' : 'cartons';
+      if(db) return db.collection(col).doc(code).get().then(function(s){ return s.exists ? s.data() : null; });
+      var storeKey = col==='packets' ? 'og_fb_packets' : 'og_fb_cartons';
+      var raw={}; try{ raw=JSON.parse(localStorage.getItem(storeKey)||'{}'); }catch(e){}
+      return Promise.resolve(raw[code]||null);
+    },
+    claimUnitForShipment: function(code, awb, staffName){
+      var m=/-(C|P)\d{5}$/.exec(code||'');
+      if(!m) return Promise.resolve({ok:false, reason:'not_found'});
+      var col = m[1]==='P' ? 'packets' : 'cartons';
+      if(db){
+        var cref=db.collection(col).doc(code);
+        return db.runTransaction(function(tx){
+          return tx.get(cref).then(function(s){
+            if(!s.exists) return {ok:false, reason:'not_found'};
+            var d=s.data();
+            if(d.status!=='in_stock') return {ok:false, reason:'already_used', data:d};
+            tx.update(cref, {status:'shipped', shippedAt:nowIso(), awb:awb, staffOut:staffName||'unknown'});
+            return {ok:true, sku:d.sku, qtyPackets:d.qtyPackets||1};
+          });
+        });
+      }
+      var storeKey = col==='packets' ? 'og_fb_packets' : 'og_fb_cartons';
+      var raw={}; try{ raw=JSON.parse(localStorage.getItem(storeKey)||'{}'); }catch(e){}
+      var d=raw[code];
+      if(!d) return Promise.resolve({ok:false, reason:'not_found'});
+      if(d.status!=='in_stock') return Promise.resolve({ok:false, reason:'already_used', data:d});
+      d.status='shipped'; d.shippedAt=nowIso(); d.awb=awb; d.staffOut=staffName||'unknown';
+      raw[code]=d; localStorage.setItem(storeKey, JSON.stringify(raw));
+      return Promise.resolve({ok:true, sku:d.sku, qtyPackets:d.qtyPackets||1});
+    },
+    // ---- Returns: a scanned unit goes back to 'in_stock' (good) or 'damaged' (kept out of sellable stock) ----
+    returnUnit: function(code, condition, staffName){
+      var m=/-(C|P)\d{5}$/.exec(code||'');
+      if(!m) return Promise.resolve({ok:false, reason:'not_found'});
+      var col = m[1]==='P' ? 'packets' : 'cartons';
+      if(db){
+        var cref=db.collection(col).doc(code);
+        return db.runTransaction(function(tx){
+          return tx.get(cref).then(function(s){
+            if(!s.exists) return {ok:false, reason:'not_found'};
+            var d=s.data();
+            if(d.status!=='shipped') return {ok:false, reason:'not_shipped', data:d};
+            var pref=db.collection('products').doc(d.sku);
+            return tx.get(pref).then(function(psnap){
+              var pdata=psnap.data()||{};
+              var qtyPackets=d.qtyPackets||1;
+              if(condition==='good'){
+                tx.update(cref, {status:'in_stock', returnedAt:nowIso(), returnCondition:'good'});
+                tx.update(pref, {qty:(pdata.qty||0)+qtyPackets, updatedAt:nowIso()});
+              } else {
+                tx.update(cref, {status:'damaged', returnedAt:nowIso(), returnCondition:'damaged'});
+                tx.update(pref, {damagedQty:(pdata.damagedQty||0)+qtyPackets, updatedAt:nowIso()});
+              }
+              return {ok:true, sku:d.sku, qtyPackets:qtyPackets};
+            });
+          });
+        });
+      }
+      var storeKey = col==='packets' ? 'og_fb_packets' : 'og_fb_cartons';
+      var uraw={}; try{ uraw=JSON.parse(localStorage.getItem(storeKey)||'{}'); }catch(e){}
+      var d=uraw[code];
+      if(!d) return Promise.resolve({ok:false, reason:'not_found'});
+      if(d.status!=='shipped') return Promise.resolve({ok:false, reason:'not_shipped', data:d});
+      var praw={}; try{ praw=JSON.parse(localStorage.getItem('og_fb_products')||'{}'); }catch(e){}
+      var p=praw[d.sku]||{};
+      var qtyPackets=d.qtyPackets||1;
+      if(condition==='good'){ d.status='in_stock'; p.qty=(p.qty||0)+qtyPackets; }
+      else { d.status='damaged'; p.damagedQty=(p.damagedQty||0)+qtyPackets; }
+      d.returnedAt=nowIso(); d.returnCondition=condition;
+      uraw[code]=d; localStorage.setItem(storeKey, JSON.stringify(uraw));
+      praw[d.sku]=p; localStorage.setItem('og_fb_products', JSON.stringify(praw));
+      window.dispatchEvent(new Event('og-fb-products-changed'));
+      return Promise.resolve({ok:true, sku:d.sku, qtyPackets:qtyPackets});
+    },
+    // Manual return with no scannable unit code (adjusts a product's qty / damagedQty directly).
+    returnBySku: function(sku, qty, condition, staffName){
+      if(db){
+        var pref=db.collection('products').doc(sku);
+        return db.runTransaction(function(tx){
+          return tx.get(pref).then(function(psnap){
+            var pdata=psnap.data()||{};
+            var patch={updatedAt:nowIso()};
+            if(condition==='good') patch.qty=(pdata.qty||0)+qty;
+            else patch.damagedQty=(pdata.damagedQty||0)+qty;
+            tx.update(pref, patch);
+            return {ok:true};
+          });
+        });
+      }
+      var raw={}; try{ raw=JSON.parse(localStorage.getItem('og_fb_products')||'{}'); }catch(e){}
+      var p=raw[sku]; if(!p) return Promise.resolve({ok:false, reason:'not_found'});
+      if(condition==='good') p.qty=(p.qty||0)+qty; else p.damagedQty=(p.damagedQty||0)+qty;
+      raw[sku]=p; localStorage.setItem('og_fb_products', JSON.stringify(raw));
+      window.dispatchEvent(new Event('og-fb-products-changed'));
+      return Promise.resolve({ok:true});
+    },
+    // ---- In Progress: open a whole carton into loose, per-SKU packets ----
+    // The carton's own code is retired (status 'opened'); the packets inside have no unique code of
+    // their own and are picked later via the product's regular pre-printed SKU barcode.
+    openCarton: function(code, staffName){
+      var m=/-(C|P)\d{5}$/.exec(code||'');
+      if(!m) return Promise.resolve({ok:false, reason:'not_found'});
+      if(m[1]!=='C') return Promise.resolve({ok:false, reason:'not_a_carton'});
+      if(db){
+        var cref=db.collection('cartons').doc(code);
+        return db.runTransaction(function(tx){
+          return tx.get(cref).then(function(s){
+            if(!s.exists) return {ok:false, reason:'not_found'};
+            var d=s.data();
+            if(d.status!=='in_stock') return {ok:false, reason:'already_used', data:d};
+            var pref=db.collection('products').doc(d.sku);
+            return tx.get(pref).then(function(psnap){
+              var pdata=psnap.data()||{};
+              var qtyPackets=d.qtyPackets||1;
+              tx.update(cref, {status:'opened', openedAt:nowIso(), openedBy:staffName||'unknown'});
+              tx.update(pref, {inProgressQty:(pdata.inProgressQty||0)+qtyPackets, updatedAt:nowIso()});
+              return {ok:true, sku:d.sku, qtyPackets:qtyPackets};
+            });
+          });
+        });
+      }
+      var craw={}; try{ craw=JSON.parse(localStorage.getItem('og_fb_cartons')||'{}'); }catch(e){}
+      var d=craw[code];
+      if(!d) return Promise.resolve({ok:false, reason:'not_found'});
+      if(d.status!=='in_stock') return Promise.resolve({ok:false, reason:'already_used', data:d});
+      var praw={}; try{ praw=JSON.parse(localStorage.getItem('og_fb_products')||'{}'); }catch(e){}
+      var p=praw[d.sku]||{};
+      var qtyPackets=d.qtyPackets||1;
+      d.status='opened'; d.openedAt=nowIso(); d.openedBy=staffName||'unknown';
+      craw[code]=d; localStorage.setItem('og_fb_cartons', JSON.stringify(craw));
+      p.inProgressQty=(p.inProgressQty||0)+qtyPackets;
+      praw[d.sku]=p; localStorage.setItem('og_fb_products', JSON.stringify(praw));
+      window.dispatchEvent(new Event('og-fb-products-changed'));
+      return Promise.resolve({ok:true, sku:d.sku, qtyPackets:qtyPackets});
+    },
+    // Ships packets picked by the product's plain SKU barcode (no unique code): reduces total stock
+    // and, when they came from an opened carton, the loose "in progress" count together (floored at 0
+    // so manually-added, never-carton-tracked stock isn't affected).
+    adjustQtyOut: function(sku, qty){
+      if(db){
+        var ref=db.collection('products').doc(sku);
+        return db.runTransaction(function(tx){
+          return tx.get(ref).then(function(snap){
+            var data=snap.data()||{};
+            var newQty=(data.qty||0)-qty;
+            var ipDelta=Math.min(qty, data.inProgressQty||0);
+            var newInProgress=(data.inProgressQty||0)-ipDelta;
+            tx.update(ref, {qty:newQty, inProgressQty:newInProgress, updatedAt:nowIso()});
+            return {qty:newQty, ipDelta:ipDelta};
+          });
+        });
+      }
+      var raw={}; try{ raw=JSON.parse(localStorage.getItem('og_fb_products')||'{}'); }catch(e){}
+      if(!raw[sku]) return Promise.resolve({qty:null, ipDelta:0});
+      var ipDelta=Math.min(qty, raw[sku].inProgressQty||0);
+      raw[sku].qty=(raw[sku].qty||0)-qty;
+      raw[sku].inProgressQty=(raw[sku].inProgressQty||0)-ipDelta;
+      raw[sku].updatedAt=nowIso();
+      localStorage.setItem('og_fb_products', JSON.stringify(raw));
+      window.dispatchEvent(new Event('og-fb-products-changed'));
+      return Promise.resolve({qty:raw[sku].qty, ipDelta:ipDelta});
+    },
+    // Deletes a product outright. Only allowed when it has no live stock (qty/inProgressQty/damagedQty
+    // all zero) and no carton/packet still pending or in_stock under it — otherwise stock would simply
+    // vanish, or an active label would be orphaned. Historical (shipped/opened/damaged) codes and past
+    // movement-history rows are left as-is; they'll just show a blank product line if looked up later.
+    deleteProduct: function(sku){
+      if(db){
+        var pref=db.collection('products').doc(sku);
+        return Promise.all([
+          pref.get(),
+          db.collection('cartons').where('sku','==',sku).get(),
+          db.collection('packets').where('sku','==',sku).get()
+        ]).then(function(results){
+          var psnap=results[0], cartonsSnap=results[1], packetsSnap=results[2];
+          if(!psnap.exists) return {ok:false, reason:'not_found'};
+          var p=psnap.data()||{};
+          if((p.qty||0)!==0 || (p.inProgressQty||0)!==0 || (p.damagedQty||0)!==0){
+            return {ok:false, reason:'has_stock', qty:p.qty||0, inProgressQty:p.inProgressQty||0, damagedQty:p.damagedQty||0};
+          }
+          var active=false;
+          cartonsSnap.forEach(function(d){ var st=(d.data()||{}).status; if(st==='pending'||st==='in_stock') active=true; });
+          packetsSnap.forEach(function(d){ var st=(d.data()||{}).status; if(st==='pending'||st==='in_stock') active=true; });
+          if(active) return {ok:false, reason:'has_active_codes'};
+          return pref.delete().then(function(){ return {ok:true}; });
+        });
+      }
+      var praw={}; try{ praw=JSON.parse(localStorage.getItem('og_fb_products')||'{}'); }catch(e){}
+      var p=praw[sku];
+      if(!p) return Promise.resolve({ok:false, reason:'not_found'});
+      if((p.qty||0)!==0 || (p.inProgressQty||0)!==0 || (p.damagedQty||0)!==0){
+        return Promise.resolve({ok:false, reason:'has_stock', qty:p.qty||0, inProgressQty:p.inProgressQty||0, damagedQty:p.damagedQty||0});
+      }
+      var craw={}; try{ craw=JSON.parse(localStorage.getItem('og_fb_cartons')||'{}'); }catch(e){}
+      var praw2={}; try{ praw2=JSON.parse(localStorage.getItem('og_fb_packets')||'{}'); }catch(e){}
+      var active=false;
+      Object.keys(craw).forEach(function(c){ var d=craw[c]; if(d.sku===sku && (d.status==='pending'||d.status==='in_stock')) active=true; });
+      Object.keys(praw2).forEach(function(c){ var d=praw2[c]; if(d.sku===sku && (d.status==='pending'||d.status==='in_stock')) active=true; });
+      if(active) return Promise.resolve({ok:false, reason:'has_active_codes'});
+      delete praw[sku];
+      localStorage.setItem('og_fb_products', JSON.stringify(praw));
+      window.dispatchEvent(new Event('og-fb-products-changed'));
+      return Promise.resolve({ok:true});
+    },
+    // Reverses one movement-history entry: undoes its stock effect and, for entries tied to unique
+    // carton/packet codes, reverts those codes to the status they had before that entry — but only
+    // when every code involved is still exactly where that entry left it (nothing shipped/opened/
+    // returned again since). If anything has moved on, the whole void is refused rather than guessing.
+    // The entry itself is kept and marked voided (not deleted) so History stays a complete audit trail.
+    voidMovement: function(dateStr, entryId, staffName){
+      function codeCol(code){ return /-P\d{5}$/.test(code) ? 'packets' : 'cartons'; }
+      function reverse(entry, pdata, codeDatas){
+        var newQty=pdata.qty||0, newDamaged=pdata.damagedQty||0, newInProgress=pdata.inProgressQty||0;
+        var codePatches=[]; // {code, patch}
+        var codes = entry.cartons||[];
+        switch(entry.type){
+          case 'in':
+            newQty -= entry.qty;
+            if(newQty<0) return {ok:false, reason:'would_go_negative'};
+            for(var i=0;i<codes.length;i++){
+              if(!codeDatas[codes[i]]) return {ok:false, reason:'code_missing', code:codes[i]};
+              if(codeDatas[codes[i]].status!=='in_stock') return {ok:false, reason:'code_moved', code:codes[i]};
+              codePatches.push({code:codes[i], patch:{status:'pending', receivedAt:null, staffIn:null}});
+            }
+            break;
+          case 'out':
+            newQty += entry.qty;
+            if(codes.length){
+              for(var j=0;j<codes.length;j++){
+                if(!codeDatas[codes[j]]) return {ok:false, reason:'code_missing', code:codes[j]};
+                if(codeDatas[codes[j]].status!=='shipped') return {ok:false, reason:'code_moved', code:codes[j]};
+                codePatches.push({code:codes[j], patch:{status:'in_stock', shippedAt:null, awb:null, staffOut:null}});
+              }
+            } else if(entry.ipDelta){
+              newInProgress += entry.ipDelta;
+            }
+            break;
+          case 'adjust':
+            newQty -= entry.qty;
+            if(newQty<0) return {ok:false, reason:'would_go_negative'};
+            break;
+          case 'return':
+            if(entry.condition==='damaged'){
+              newDamaged -= entry.qty;
+              if(newDamaged<0) return {ok:false, reason:'would_go_negative'};
+            } else {
+              newQty -= entry.qty;
+              if(newQty<0) return {ok:false, reason:'would_go_negative'};
+            }
+            for(var k=0;k<codes.length;k++){
+              if(!codeDatas[codes[k]]) return {ok:false, reason:'code_missing', code:codes[k]};
+              var expect = entry.condition==='damaged' ? 'damaged' : 'in_stock';
+              if(codeDatas[codes[k]].status!==expect) return {ok:false, reason:'code_moved', code:codes[k]};
+              codePatches.push({code:codes[k], patch:{status:'shipped', returnedAt:null, returnCondition:null}});
+            }
+            break;
+          case 'open':
+            newInProgress -= entry.qty;
+            if(newInProgress<0) return {ok:false, reason:'would_go_negative'};
+            for(var m=0;m<codes.length;m++){
+              if(!codeDatas[codes[m]]) return {ok:false, reason:'code_missing', code:codes[m]};
+              if(codeDatas[codes[m]].status!=='opened') return {ok:false, reason:'code_moved', code:codes[m]};
+              codePatches.push({code:codes[m], patch:{status:'in_stock', openedAt:null, openedBy:null}});
+            }
+            break;
+          default:
+            return {ok:false, reason:'not_voidable'};
+        }
+        return {ok:true, newQty:newQty, newDamaged:newDamaged, newInProgress:newInProgress, codePatches:codePatches};
+      }
+      if(db){
+        var dayRef=db.collection('movements').doc(dateStr);
+        return db.runTransaction(function(tx){
+          return tx.get(dayRef).then(function(daySnap){
+            if(!daySnap.exists) return {ok:false, reason:'not_found'};
+            var entries=(daySnap.data()||{}).entries||[];
+            var idx=-1; entries.forEach(function(e,i){ if(e.id===entryId) idx=i; });
+            if(idx<0) return {ok:false, reason:'not_found'};
+            var entry=entries[idx];
+            if(entry.voided) return {ok:false, reason:'already_voided'};
+            var pref=db.collection('products').doc(entry.sku);
+            var codes=entry.cartons||[];
+            var codeRefs=codes.map(function(c){ return db.collection(codeCol(c)).doc(c); });
+            return tx.get(pref).then(function(psnap){
+              if(!psnap.exists) return {ok:false, reason:'product_missing'};
+              return Promise.all(codeRefs.map(function(r){ return tx.get(r); })).then(function(codeSnaps){
+                var codeDatas={};
+                for(var i=0;i<codes.length;i++){ if(codeSnaps[i].exists) codeDatas[codes[i]]=codeSnaps[i].data(); }
+                var r=reverse(entry, psnap.data()||{}, codeDatas);
+                if(!r.ok) return r;
+                tx.update(pref, {qty:r.newQty, damagedQty:r.newDamaged, inProgressQty:r.newInProgress, updatedAt:nowIso()});
+                r.codePatches.forEach(function(cp){ tx.update(db.collection(codeCol(cp.code)).doc(cp.code), cp.patch); });
+                var newEntries=entries.slice();
+                newEntries[idx]=Object.assign({}, entry, {voided:true, voidedAt:nowIso(), voidedBy:staffName||'unknown'});
+                tx.set(dayRef, {entries:newEntries});
+                return {ok:true};
+              });
+            });
+          });
+        });
+      }
+      var mraw={}; try{ mraw=JSON.parse(localStorage.getItem('og_fb_movements')||'{}'); }catch(e){}
+      var entries=mraw[dateStr]||[];
+      var idx=-1; entries.forEach(function(e,i){ if(e.id===entryId) idx=i; });
+      if(idx<0) return Promise.resolve({ok:false, reason:'not_found'});
+      var entry=entries[idx];
+      if(entry.voided) return Promise.resolve({ok:false, reason:'already_voided'});
+      var praw={}; try{ praw=JSON.parse(localStorage.getItem('og_fb_products')||'{}'); }catch(e){}
+      var pdata=praw[entry.sku];
+      if(!pdata) return Promise.resolve({ok:false, reason:'product_missing'});
+      var codes=entry.cartons||[];
+      var craw={}; try{ craw=JSON.parse(localStorage.getItem('og_fb_cartons')||'{}'); }catch(e){}
+      var prraw={}; try{ prraw=JSON.parse(localStorage.getItem('og_fb_packets')||'{}'); }catch(e){}
+      var codeDatas={};
+      codes.forEach(function(c){ var store=codeCol(c)==='packets'?prraw:craw; if(store[c]) codeDatas[c]=store[c]; });
+      var r=reverse(entry, pdata, codeDatas);
+      if(!r.ok) return Promise.resolve(r);
+      pdata.qty=r.newQty; pdata.damagedQty=r.newDamaged; pdata.inProgressQty=r.newInProgress; pdata.updatedAt=nowIso();
+      praw[entry.sku]=pdata; localStorage.setItem('og_fb_products', JSON.stringify(praw));
+      r.codePatches.forEach(function(cp){
+        var store=codeCol(cp.code)==='packets'?prraw:craw;
+        store[cp.code]=Object.assign({}, store[cp.code], cp.patch);
+      });
+      localStorage.setItem('og_fb_cartons', JSON.stringify(craw));
+      localStorage.setItem('og_fb_packets', JSON.stringify(prraw));
+      entries[idx]=Object.assign({}, entry, {voided:true, voidedAt:nowIso(), voidedBy:staffName||'unknown'});
+      mraw[dateStr]=entries;
+      localStorage.setItem('og_fb_movements', JSON.stringify(mraw));
+      window.dispatchEvent(new Event('og-fb-products-changed'));
+      return Promise.resolve({ok:true});
+    },
+    // ---------------- Accounts (live mode only — no login concept in offline fallback) ----------------
+    login: function(username, password){
+      var email=(username||'').trim().toLowerCase()+AUTH_EMAIL_SUFFIX;
+      return firebase.auth().signInWithEmailAndPassword(email, password);
+    },
+    logout: function(){ return firebase.auth().signOut(); },
+    getUserDoc: function(uid){
+      return db.collection('users').doc(uid).get().then(function(s){ return s.exists ? Object.assign({uid:uid}, s.data()) : null; });
+    },
+    listUsers: function(){
+      return db.collection('users').get().then(function(snap){
+        var out=[]; snap.forEach(function(d){ out.push(Object.assign({uid:d.id}, d.data())); });
+        out.sort(function(a,b){ return (a.username||'')<(b.username||'')?-1:1; });
+        return out;
+      });
+    },
+    // Creates a brand-new login without disturbing the admin's own signed-in session: the signup
+    // call runs on a throwaway secondary Firebase app instance, so the primary app (where the admin
+    // is signed in) never sees an auth-state change.
+    createUser: function(username, password, role, createdBy){
+      var email=(username||'').trim().toLowerCase()+AUTH_EMAIL_SUFFIX;
+      var secondary = firebase.initializeApp(FIREBASE_CONFIG, 'userCreate-'+Date.now());
+      return secondary.auth().createUserWithEmailAndPassword(email, password).then(function(cred){
+        var uid=cred.user.uid;
+        return secondary.auth().signOut().then(function(){
+          return db.collection('users').doc(uid).set({
+            username: username.trim().toLowerCase(), role: role==='admin' ? 'admin' : 'staff',
+            disabled:false, createdAt:nowIso(), createdBy:createdBy||'unknown'
+          });
+        }).then(function(){ return secondary.delete(); }).then(function(){ return {ok:true, uid:uid}; });
+      }).catch(function(err){
+        return secondary.delete().catch(function(){}).then(function(){
+          var reason = err && err.code==='auth/email-already-in-use' ? 'taken'
+            : (err && err.code==='auth/weak-password' ? 'weak_password' : 'error');
+          return {ok:false, reason:reason, message: err && err.message};
+        });
+      });
+    },
+    setUserFlags: function(uid, patch){
+      return db.collection('users').doc(uid).update(patch);
+    },
+    changeMyPassword: function(currentPassword, newPassword){
+      var user=firebase.auth().currentUser;
+      if(!user) return Promise.reject(new Error('Not signed in'));
+      var cred=firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
+      return user.reauthenticateWithCredential(cred).then(function(){ return user.updatePassword(newPassword); });
+    }
+  };
+
+  // ---------------- Account chip / overlay ----------------
+  // Fallback (offline, single device, no Firebase) mode keeps the old free-text name prompt — there's
+  // no login concept without a shared backend. Live mode shows the signed-in account instead.
+  // In offline fallback mode there's no accounts/roles at all, so everyone keeps today's behavior.
+  // In live mode, destructive/undo actions (delete product, void a history entry) need admin.
+  function isAdminUser(){ return usingFallback || (currentUser && currentUser.role==='admin'); }
+  function initials(name){ return (name||'?').trim().split(/\s+/).map(function(w){return w[0];}).slice(0,2).join('').toUpperCase(); }
+  function refreshStaffChip(){
+    document.getElementById('staffLabel').textContent = staffName || (usingFallback ? 'Set name' : 'Account');
+    document.getElementById('staffAvatar').textContent = staffName ? initials(staffName) : '?';
+  }
+  function openNameOverlay(){
+    var ov=document.getElementById('nameOverlay');
+    document.getElementById('fallbackNameCard').hidden=false;
+    document.getElementById('acctCard').hidden=true;
+    document.getElementById('nameInput').value = staffName;
+    ov.hidden=false;
+    setTimeout(function(){document.getElementById('nameInput').focus();},50);
+  }
+  function openAccountOverlay(){
+    var ov=document.getElementById('nameOverlay');
+    document.getElementById('fallbackNameCard').hidden=true;
+    document.getElementById('acctCard').hidden=false;
+    document.getElementById('acctUserLabel').textContent = currentUser ? currentUser.username : 'Account';
+    document.getElementById('acctRoleLabel').textContent = currentUser ? (currentUser.role==='admin'?'Admin':'Staff') : '';
+    document.getElementById('acctCurPass').value=''; document.getElementById('acctNewPass').value='';
+    document.getElementById('acctMsg').hidden=true;
+    ov.hidden=false;
+  }
+  document.getElementById('staffChip').addEventListener('click', function(){
+    if(usingFallback) openNameOverlay(); else openAccountOverlay();
+  });
+  document.getElementById('nameSaveBtn').addEventListener('click', function(){
+    var v=document.getElementById('nameInput').value.trim();
+    if(!v) return;
+    staffName=v; localStorage.setItem('og_staff_name', v);
+    refreshStaffChip();
+    document.getElementById('nameOverlay').hidden=true;
+  });
+  document.getElementById('nameInput').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('nameSaveBtn').click(); });
+  document.getElementById('acctChangePassBtn').addEventListener('click', function(){
+    var cur=document.getElementById('acctCurPass').value, next=document.getElementById('acctNewPass').value;
+    var msg=document.getElementById('acctMsg');
+    msg.hidden=true;
+    if(!cur||!next){ msg.textContent='Enter your current and new password.'; msg.hidden=false; return; }
+    if(next.length<6){ msg.textContent='New password must be at least 6 characters.'; msg.hidden=false; return; }
+    Backend.changeMyPassword(cur, next).then(function(){
+      toast('Password updated');
+      document.getElementById('acctCurPass').value=''; document.getElementById('acctNewPass').value='';
+    }).catch(function(err){
+      msg.textContent = (err && err.code==='auth/wrong-password') ? 'Current password is incorrect.' : 'Could not update password.';
+      msg.hidden=false;
+    });
+  });
+  document.getElementById('logoutBtn').addEventListener('click', function(){
+    document.getElementById('nameOverlay').hidden=true;
+    Backend.logout();
+  });
+
+  // ---------------- Nav ----------------
+  document.querySelectorAll('.navbtn').forEach(function(btn){
+    btn.addEventListener('click', function(){ showTab(btn.dataset.tab); });
+  });
+  function showTab(tab){
+    if(tab==='admin' && !(currentUser && currentUser.role==='admin')) tab='dashboard';
+    currentTab=tab;
+    document.querySelectorAll('.tabpanel').forEach(function(el){ el.hidden = el.id!=='tab-'+tab; });
+    document.querySelectorAll('.navbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.tab===tab); });
+    renderTab(tab);
+  }
+  function renderTab(tab){
+    if(tab==='dashboard') renderDashboard();
+    else if(tab==='products') renderProducts();
+    else if(tab==='history') renderHistory();
+    else if(tab==='inprogress') renderInProgressList();
+    else if(tab==='admin') renderAdmin();
+  }
+  function rerenderIfActive(tabs){ if(tabs.indexOf(currentTab)>=0) renderTab(currentTab); }
+
+  // ---------------- Dashboard ----------------
+  var stockSearchVal='';
+  document.getElementById('stockSearch').addEventListener('input', function(e){ stockSearchVal=e.target.value.toLowerCase(); renderDashboard(); });
+  function renderDashboard(){
+    var list=Array.from(products.values());
+    var totalSkus=list.length;
+    var totalPieces=list.reduce(function(a,p){return a+(p.qty||0);},0);
+    var low=list.filter(function(p){ var s=stockStatus(p); return s.cls==='warn'; }).length;
+    var out=list.filter(function(p){ var s=stockStatus(p); return s.cls==='danger'; }).length;
+    var inQty=todayEntries.filter(function(e){return e.type==='in';}).reduce(function(a,e){return a+(e.qty||0);},0);
+    var outQty=todayEntries.filter(function(e){return e.type==='out';}).reduce(function(a,e){return a+(e.qty||0);},0);
+    var damagedQty=list.reduce(function(a,p){return a+(p.damagedQty||0);},0);
+    var inProgressQty=list.reduce(function(a,p){return a+(p.inProgressQty||0);},0);
+    document.getElementById('tiles').innerHTML = [
+      tile('SKUs tracked', totalSkus, ''),
+      tile('Packets in stock', totalPieces, ''),
+      tile('In today', inQty, ''),
+      tile('Out today', outQty, ''),
+      tile('Low stock', low, low>0?'warn':''),
+      tile('Out of stock', out, out>0?'danger':''),
+      tile('Loose (in progress)', inProgressQty, ''),
+      tile('Damaged / returned', damagedQty, damagedQty>0?'warn':'')
+    ].join('');
+
+    var q=stockSearchVal;
+    var filtered = list.filter(function(p){
+      if(!q) return true;
+      var hay=[p.sku,p.brand,p.variant,p.size,catLabel(p.category)].join(' ').toLowerCase();
+      return hay.indexOf(q)>=0;
+    });
+    var html='';
+    CATEGORIES.forEach(function(cat){
+      var items=filtered.filter(function(p){return p.category===cat.code;}).sort(function(a,b){return productLabel(a)<productLabel(b)?-1:1;});
+      if(!items.length) return;
+      html+='<div class="cat-group"><div class="cat-head">'+esc(cat.label)+'</div>';
+      items.forEach(function(p){
+        var s=stockStatus(p);
+        html+='<div class="prod-row"><div class="prod-main"><div class="prod-name">'+esc(productLabel(p))+'</div><div class="prod-sku">'+esc(p.sku)+'</div></div>'+
+          '<div class="prod-qty"><span class="big">'+cartonsText(p)+'</span><br><span class="pill '+s.cls+'">'+s.label+'</span></div></div>';
+      });
+      html+='</div>';
+    });
+    document.getElementById('stockList').innerHTML = html || '<div class="empty-state">No products yet &mdash; add one from the Products tab.</div>';
+  }
+  function tile(label, num, cls){
+    return '<div class="tile '+(cls||'')+'"><div class="num">'+num+'</div><div class="lbl">'+esc(label)+'</div></div>';
+  }
+  document.getElementById('exportStockBtn').addEventListener('click', function(){
+    var rows=[['SKU','Category','Brand','Name','Variant','Size','Pcs per pack','Packets per carton','Qty (packets)','Cartons + pcs','Status','Damaged/Returned (packets)','Existing barcode']];
+    Array.from(products.values()).forEach(function(p){
+      rows.push([p.sku, catLabel(p.category), p.brand||'', p.name||'', p.variant||'', p.size||'', p.pcsPerPack||'', p.unitsPerCarton||'', p.qty||0, cartonsText(p), stockStatus(p).label, p.damagedQty||0, p.existingBarcode||'']);
+    });
+    downloadCsv('stock-snapshot-'+todayStr()+'.csv', rows);
+  });
+  function csvEscape(v){ v=String(v==null?'':v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+  function downloadCsv(filename, rows){
+    var csv=rows.map(function(r){return r.map(csvEscape).join(',');}).join('\n');
+    Backend.saveCsv(filename, csv).then(function(ok){
+      if(!ok) toast('CSV export isn\'t available in this view.');
+    });
+  }
+
+  // ---------------- Products tab ----------------
+  var npCategory=document.getElementById('npCategory');
+  CATEGORIES.forEach(function(c){ var o=document.createElement('option'); o.value=c.code; o.textContent=c.label; npCategory.appendChild(o); });
+  var brandList=document.getElementById('brandList');
+  BRANDS.forEach(function(b){ var o=document.createElement('option'); o.value=b; brandList.appendChild(o); });
+
+  document.getElementById('toggleAddProduct').addEventListener('click', function(){
+    var f=document.getElementById('addProductForm'); f.hidden=!f.hidden;
+  });
+  document.getElementById('cancelAddProduct').addEventListener('click', function(){
+    document.getElementById('addProductForm').hidden=true;
+  });
+  document.getElementById('npBarcodeCamBtn').addEventListener('click', function(){
+    CameraScanner.open(function(code){
+      document.getElementById('npBarcode').value=code;
+      AudioFX.success();
+      toast('Barcode captured — '+code);
+    });
+  });
+  document.getElementById('saveProductBtn').addEventListener('click', function(){
+    var category=npCategory.value;
+    var brand=document.getElementById('npBrand').value.trim();
+    var name=document.getElementById('npName').value.trim();
+    var variant=document.getElementById('npVariant').value.trim();
+    var size=document.getElementById('npSize').value.trim();
+    var pcsPerPack=parseInt(document.getElementById('npPcsPerPack').value,10)||1;
+    var unitsPerCarton=parseInt(document.getElementById('npUnitsPerCarton').value,10)||1;
+    var openingQty=parseInt(document.getElementById('npOpeningQty').value,10)||0;
+    var existingBarcode=document.getElementById('npBarcode').value.trim();
+    if(!brand){ toast('Enter a brand.'); return; }
+    if(!name){ toast('Enter the product name.'); return; }
+    if(existingBarcode && lookupProduct(existingBarcode)){ toast('That barcode is already used by another product.'); return; }
+    var sku=genSku(category);
+    var product={sku:sku, category:category, brand:brand, name:name, variant:variant, size:size, pcsPerPack:pcsPerPack, unitsPerCarton:unitsPerCarton, existingBarcode:existingBarcode||null, qty:openingQty, lowStockAt:unitsPerCarton, createdAt:nowIso(), createdBy:staffName||'unknown'};
+    Backend.createProduct(product).then(function(){
+      if(openingQty>0){
+        return Backend.appendMovements(todayStr(), [{id:genId(), type:'in', sku:sku, category:category||null, brand:brand||null, size:size||null, variant:variant||null, qty:openingQty, staff:staffName||'unknown', note:'Opening stock', cartons:null, timestamp:nowIso()}]);
+      }
+    }).then(function(){
+      toast('Product added — '+sku);
+      document.getElementById('npBrand').value=''; document.getElementById('npName').value=''; document.getElementById('npVariant').value=''; document.getElementById('npSize').value='';
+      document.getElementById('npPcsPerPack').value=1; document.getElementById('npUnitsPerCarton').value=1; document.getElementById('npOpeningQty').value=0; document.getElementById('npBarcode').value='';
+      document.getElementById('addProductForm').hidden=true;
+    });
+  });
+
+  var selectedForPrint=new Set();
+  function renderProducts(){
+    var html='';
+    CATEGORIES.forEach(function(cat){
+      var items=Array.from(products.values()).filter(function(p){return p.category===cat.code;}).sort(function(a,b){return productLabel(a)<productLabel(b)?-1:1;});
+      if(!items.length) return;
+      html+='<div class="card"><div class="cat-head">'+esc(cat.label)+'</div>';
+      items.forEach(function(p){
+        var s=stockStatus(p);
+        html+='<div class="prod-row" data-sku="'+esc(p.sku)+'">'+
+          '<div class="checkbox-row"><input type="checkbox" class="printCheck" data-sku="'+esc(p.sku)+'" '+(selectedForPrint.has(p.sku)?'checked':'')+'/></div>'+
+          '<svg class="bc-mini" data-sku="'+esc(p.sku)+'"></svg>'+
+          '<div class="prod-main"><div class="prod-name">'+esc(productLabel(p))+'</div><div class="prod-sub">'+esc(cartonsText(p))+' &middot; <span class="pill '+s.cls+'">'+s.label+'</span></div></div>'+
+          '<div class="prod-actions">'+
+            '<button class="small" data-act="adjust" data-sku="'+esc(p.sku)+'" type="button">Adjust</button>'+
+            '<button class="small" data-act="edit" data-sku="'+esc(p.sku)+'" type="button">Edit</button>'+
+            (isAdminUser() ? '<button class="small danger-outline" data-act="delete" data-sku="'+esc(p.sku)+'" type="button">Delete</button>' : '')+
+          '</div>'+
+        '</div>'+
+        '<div class="inline-form" id="adjust-'+esc(p.sku)+'" hidden>'+
+          '<div class="row"><div class="field"><label>Adjust by (packets, use negative to reduce)</label><input type="number" id="adjqty-'+esc(p.sku)+'" value="0" /></div>'+
+          '<div class="field"><label>Reason</label><input type="text" id="adjnote-'+esc(p.sku)+'" placeholder="e.g. recount, damaged" /></div></div>'+
+          '<button class="primary small" data-act="applyadjust" data-sku="'+esc(p.sku)+'" type="button">Apply</button>'+
+        '</div>'+
+        '<div class="inline-form" id="edit-'+esc(p.sku)+'" hidden>'+
+          '<div class="row">'+
+            '<div class="field"><label>Brand</label><input type="text" id="editbrand-'+esc(p.sku)+'" value="'+esc(p.brand||'')+'" /></div>'+
+            '<div class="field"><label>Name of the product</label><input type="text" id="editname-'+esc(p.sku)+'" value="'+esc(p.name||'')+'" /></div>'+
+          '</div>'+
+          '<div class="row">'+
+            '<div class="field"><label>Variant</label><input type="text" id="editvariant-'+esc(p.sku)+'" value="'+esc(p.variant||'')+'" /></div>'+
+            '<div class="field"><label>Size</label><input type="text" id="editsize-'+esc(p.sku)+'" value="'+esc(p.size||'')+'" /></div>'+
+          '</div>'+
+          '<div class="row">'+
+            '<div class="field"><label>Pcs in pack</label><input type="number" min="1" id="editpcs-'+esc(p.sku)+'" value="'+(p.pcsPerPack||1)+'" /></div>'+
+            '<div class="field"><label>Packets/carton</label><input type="number" min="1" id="editupc-'+esc(p.sku)+'" value="'+(p.unitsPerCarton||1)+'" /></div>'+
+            '<div class="field"><label>Low stock at</label><input type="number" min="0" id="editlow-'+esc(p.sku)+'" value="'+(p.lowStockAt!=null?p.lowStockAt:'')+'" /></div>'+
+          '</div>'+
+          '<div class="scan-input-wrap">'+
+            '<div style="flex:1"><label>Existing barcode on the packet</label><input type="text" id="editbarcode-'+esc(p.sku)+'" value="'+esc(p.existingBarcode||'')+'" placeholder="Scan or type" /></div>'+
+            '<button class="small" data-act="scanbarcode" data-sku="'+esc(p.sku)+'" type="button">&#128247; Camera</button>'+
+          '</div>'+
+          '<div class="row"><div class="field" style="max-width:160px;"><label>Print qty</label><input type="number" min="1" id="printqty-'+esc(p.sku)+'" value="1" /></div>'+
+          '<button class="small" data-act="printone" data-sku="'+esc(p.sku)+'" type="button">Print label</button></div>'+
+          '<button class="primary small" data-act="saveedit" data-sku="'+esc(p.sku)+'" type="button">Save changes</button>'+
+        '</div>';
+      });
+      html+='</div>';
+    });
+    document.getElementById('productGroups').innerHTML = html || '<div class="empty-state">No products yet.</div>';
+    document.querySelectorAll('.bc-mini').forEach(function(svg){ renderBarcode(svg, svg.dataset.sku, {height:26, fontSize:9, width:1.2}); });
+    updatePrintBar();
+  }
+  document.getElementById('productGroups').addEventListener('click', function(e){
+    var btn=e.target.closest('button[data-act]');
+    if(!btn) return;
+    var sku=btn.dataset.sku, act=btn.dataset.act;
+    if(act==='adjust'){ toggleInline('adjust-'+sku); }
+    else if(act==='edit'){ toggleInline('edit-'+sku); }
+    else if(act==='applyadjust'){
+      var delta=parseInt(document.getElementById('adjqty-'+sku).value,10)||0;
+      var note=document.getElementById('adjnote-'+sku).value.trim();
+      if(!delta){ toast('Enter a non-zero amount.'); return; }
+      var p=products.get(sku)||{};
+      Backend.adjustQty(sku, delta).then(function(){
+        return Backend.appendMovements(todayStr(), [{id:genId(), type:'adjust', sku:sku, category:p.category||null, brand:p.brand||null, size:p.size||null, variant:p.variant||null, qty:delta, staff:staffName||'unknown', note:note, timestamp:nowIso()}]);
+      }).then(function(){ toast('Stock adjusted'); document.getElementById('adjust-'+sku).hidden=true; });
+    } else if(act==='scanbarcode'){
+      CameraScanner.open(function(code){
+        document.getElementById('editbarcode-'+sku).value=code;
+        AudioFX.success();
+        toast('Barcode captured — '+code);
+      });
+    } else if(act==='saveedit'){
+      var newBarcode=document.getElementById('editbarcode-'+sku).value.trim();
+      var clash = newBarcode ? lookupProduct(newBarcode) : null;
+      if(clash && clash.sku!==sku){ toast('That barcode is already used by another product.'); return; }
+      var patch={
+        brand: document.getElementById('editbrand-'+sku).value.trim(),
+        name: document.getElementById('editname-'+sku).value.trim(),
+        variant: document.getElementById('editvariant-'+sku).value.trim(),
+        size: document.getElementById('editsize-'+sku).value.trim(),
+        pcsPerPack: parseInt(document.getElementById('editpcs-'+sku).value,10)||1,
+        unitsPerCarton: parseInt(document.getElementById('editupc-'+sku).value,10)||1,
+        lowStockAt: document.getElementById('editlow-'+sku).value===''? null : parseInt(document.getElementById('editlow-'+sku).value,10),
+        existingBarcode: newBarcode||null
+      };
+      Backend.updateProductMeta(sku, patch).then(function(){ toast('Saved'); document.getElementById('edit-'+sku).hidden=true; });
+    } else if(act==='printone'){
+      var qty=parseInt(document.getElementById('printqty-'+sku).value,10)||1;
+      var m=new Map(); m.set(sku, qty);
+      printLabels(m);
+    } else if(act==='delete'){
+      var dp=products.get(sku)||{};
+      askConfirm('Delete '+productLabel(dp)+'?', 'This removes the product for good. Its past scans stay in History, but it will no longer show up anywhere to scan, restock, or ship.').then(function(yes){
+        if(!yes) return;
+        Backend.deleteProduct(sku).then(function(r){
+          if(r.ok){ AudioFX.success(); toast('Deleted'); }
+          else if(r.reason==='has_stock') toast('Can\'t delete — it still has stock: '+r.qty+' in stock, '+r.inProgressQty+' loose, '+r.damagedQty+' damaged. Zero those out first.');
+          else if(r.reason==='has_active_codes') toast('Can\'t delete — it has printed labels still pending or in stock. Receive/ship/clear those first.');
+          else toast('Could not delete this product.');
+        });
+      });
+    }
+  });
+  document.getElementById('productGroups').addEventListener('change', function(e){
+    if(e.target.classList.contains('printCheck')){
+      var sku=e.target.dataset.sku;
+      if(e.target.checked) selectedForPrint.add(sku); else selectedForPrint.delete(sku);
+      updatePrintBar();
+    }
+  });
+  function toggleInline(id){ var el=document.getElementById(id); el.hidden=!el.hidden; }
+  function updatePrintBar(){
+    var bar=document.getElementById('printBar');
+    bar.hidden = selectedForPrint.size===0;
+    document.getElementById('printSelCount').textContent = selectedForPrint.size+' selected';
+  }
+  document.getElementById('printSelectedBtn').addEventListener('click', function(){
+    var each=parseInt(document.getElementById('printQtyEach').value,10)||1;
+    var m=new Map(); selectedForPrint.forEach(function(sku){ m.set(sku, each); });
+    printLabels(m);
+  });
+  function printLabels(skuQtyMap){
+    var grid=document.getElementById('labelGrid');
+    grid.innerHTML='';
+    skuQtyMap.forEach(function(qty, sku){
+      var p=products.get(sku); if(!p) return;
+      for(var i=0;i<qty;i++){
+        var wrap=document.createElement('div'); wrap.className='label';
+        wrap.innerHTML='<div class="lname">'+esc(productLabel(p))+'</div><div class="lsub">'+esc(catLabel(p.category))+'</div><svg class="pl-bc"></svg>';
+        grid.appendChild(wrap);
+        renderBarcode(wrap.querySelector('.pl-bc'), sku, {height:22, fontSize:7, width:1.2, margin:2});
+      }
+    });
+    setTimeout(function(){ window.print(); }, 80);
+  }
+  function printUnitLabels(codes, product, level){
+    var grid=document.getElementById('labelGrid');
+    grid.innerHTML='';
+    var sub=esc(catLabel(product.category))+' &middot; 1 '+(level==='packet'?'packet':'carton');
+    codes.forEach(function(code){
+      var wrap=document.createElement('div'); wrap.className='label';
+      wrap.innerHTML='<div class="lname">'+esc(productLabel(product))+'</div><div class="lsub">'+sub+'</div><svg class="pl-bc"></svg>';
+      grid.appendChild(wrap);
+      // Unique codes are longer (e.g. BD-4F2A-C00001) so bars run narrower to keep the whole code on one line.
+      renderBarcode(wrap.querySelector('.pl-bc'), code, {height:20, fontSize:6.5, width:0.9, margin:2});
+    });
+    setTimeout(function(){ window.print(); }, 80);
+  }
+
+  // ---------------- Generate carton/packet barcodes ----------------
+  function populateGenUnitSelect(){
+    var sel=document.getElementById('genUnitProduct');
+    if(!sel) return;
+    var cur=sel.value;
+    var list=Array.from(products.values()).sort(function(a,b){ return productLabel(a)<productLabel(b)?-1:1; });
+    sel.innerHTML = list.length
+      ? list.map(function(p){ return '<option value="'+esc(p.sku)+'">'+esc(productLabel(p))+' &mdash; '+esc(p.sku)+'</option>'; }).join('')
+      : '<option value="">Add a product first</option>';
+    if(cur && products.has(cur)) sel.value=cur;
+  }
+  document.getElementById('genUnitType').addEventListener('change', function(){
+    document.getElementById('genUnitCountLabel').textContent = this.value==='packet' ? 'Number of packets' : 'Number of cartons';
+  });
+  document.getElementById('genUnitBtn').addEventListener('click', function(){
+    var sku=document.getElementById('genUnitProduct').value;
+    var level=document.getElementById('genUnitType').value;
+    var count=parseInt(document.getElementById('genUnitCount').value,10)||0;
+    if(!sku){ toast('Add a product first.'); return; }
+    if(count<1){ toast('Enter a count of at least 1.'); return; }
+    var btn=this; btn.disabled=true;
+    var p=products.get(sku)||{};
+    Backend.generateUnits(sku, count, level, staffName).then(function(codes){
+      AudioFX.success();
+      toast(count+' label'+(count===1?'':'s')+' generated — not in stock yet');
+      document.getElementById('genUnitResult').innerHTML =
+        '<div class="pill neutral" style="margin-bottom:8px;">'+codes.length+' label'+(codes.length===1?'':'s')+' ready to print</div><br>'+
+        '<button class="small primary" id="printGenUnitBtn" type="button">Print labels</button>'+
+        '<p style="color:var(--text-dim); font-size:12.5px; margin:8px 0 0;">Stick these on and scan each one in below as it actually arrives — that\'s what adds it to stock.</p>';
+      document.getElementById('printGenUnitBtn').addEventListener('click', function(){ printUnitLabels(codes, p, level); });
+    }).catch(function(err){
+      console.warn('barcode generation failed', err);
+      AudioFX.error();
+      toast('Could not generate barcodes.');
+    }).finally(function(){ btn.disabled=false; });
+  });
+
+  // ---------------- Camera barcode scanning ----------------
+  function loadZxing(){
+    if(window.ZXing) return Promise.resolve(window.ZXing);
+    if(window._zxingLoading) return window._zxingLoading;
+    window._zxingLoading = new Promise(function(resolve, reject){
+      var s=document.createElement('script');
+      s.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js';
+      s.onload=function(){ window.ZXing ? resolve(window.ZXing) : reject(new Error('ZXing global missing')); };
+      s.onerror=function(){ reject(new Error('ZXing failed to load')); };
+      document.head.appendChild(s);
+    });
+    return window._zxingLoading;
+  }
+  var CameraScanner = (function(){
+    var overlayEl, videoEl, statusEl, stream=null, raf=null, zxingReader=null, active=false, onDecodeCb=null, lastCode=null, lastTime=0;
+    function el(){
+      overlayEl=document.getElementById('camOverlay');
+      videoEl=document.getElementById('camVideo');
+      statusEl=document.getElementById('camStatus');
+    }
+    function init(){
+      el();
+      document.getElementById('camCloseBtn').addEventListener('click', stop);
+    }
+    function open(onDecode){
+      el();
+      onDecodeCb=onDecode; lastCode=null; lastTime=0;
+      overlayEl.hidden=false;
+      statusEl.textContent='Starting camera…';
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+        statusEl.textContent='This browser can’t access the camera here — use the code field instead.';
+        return;
+      }
+      if(window.BarcodeDetector){
+        startNative();
+      } else {
+        statusEl.textContent='Loading scanner…';
+        loadZxing().then(startZxing).catch(function(){
+          statusEl.textContent='Couldn’t load the camera scanner — use the code field instead.';
+        });
+      }
+    }
+    function startNative(){
+      navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(function(s){
+        stream=s; videoEl.srcObject=s;
+        active=true;
+        var detector;
+        try{ detector=new window.BarcodeDetector({formats:['code_128','code_39','ean_13','ean_8','upc_a','upc_e','qr_code']}); }
+        catch(e){ detector=new window.BarcodeDetector(); }
+        statusEl.textContent='Point the camera at a barcode';
+        function tick(){
+          if(!active) return;
+          if(videoEl.readyState>=2){
+            detector.detect(videoEl).then(function(codes){
+              if(codes && codes.length) emit(codes[0].rawValue);
+            }).catch(function(){});
+          }
+          raf=requestAnimationFrame(tick);
+        }
+        tick();
+      }).catch(handleCamError);
+    }
+    function startZxing(ZXing){
+      active=true;
+      statusEl.textContent='Point the camera at a barcode';
+      try{
+        zxingReader=new ZXing.BrowserMultiFormatReader();
+        var cb=function(result){ if(result) emit(result.getText()); };
+        var started = (typeof zxingReader.decodeFromConstraints==='function')
+          ? zxingReader.decodeFromConstraints({video:{facingMode:'environment'}}, videoEl, cb)
+          : zxingReader.decodeFromVideoDevice(undefined, videoEl, cb);
+        Promise.resolve(started).catch(handleCamError);
+      }catch(e){ handleCamError(e); }
+    }
+    function handleCamError(e){
+      active=false;
+      var msg='Couldn’t access the camera — use the code field instead.';
+      if(e && e.name==='NotAllowedError') msg='Camera access was blocked. Allow camera access and try again, or use the code field instead.';
+      else if(e && e.name==='NotFoundError') msg='No camera found on this device.';
+      statusEl.textContent=msg;
+    }
+    function emit(code){
+      var now=Date.now();
+      if(code===lastCode && (now-lastTime)<1500) return;
+      lastCode=code; lastTime=now;
+      if(navigator.vibrate){ try{ navigator.vibrate(60); }catch(e){} }
+      if(onDecodeCb) onDecodeCb(code);
+    }
+    function stop(){
+      active=false;
+      if(raf) cancelAnimationFrame(raf);
+      if(stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream=null; }
+      if(zxingReader){ try{ zxingReader.reset(); }catch(e){} zxingReader=null; }
+      if(videoEl){ try{ videoEl.pause(); }catch(e){} videoEl.srcObject=null; }
+      if(overlayEl) overlayEl.hidden=true;
+    }
+    return {init:init, open:open, stop:stop};
+  })();
+
+  // ---------------- Scan helpers ----------------
+  // Looks up a product by its app-generated SKU code, or (failing that) by the existing
+  // manufacturer/pre-printed barcode captured on the product record, so loose packets that carry
+  // their own original barcode still resolve correctly everywhere a code is scanned.
+  function lookupProduct(code){
+    var trimmed=(code||'').trim();
+    if(!trimmed) return null;
+    var direct = products.get(trimmed.toUpperCase()) || products.get(trimmed);
+    if(direct) return direct;
+    var found=null;
+    products.forEach(function(p){
+      if(!found && p.existingBarcode && p.existingBarcode.trim()===trimmed) found=p;
+    });
+    return found;
+  }
+  // Resolves a scanned/typed code to either a product-level SKU or a unique per-carton/per-packet barcode.
+  function resolveScanCode(code){
+    var trimmed=(code||'').trim();
+    var p=lookupProduct(trimmed);
+    if(p) return Promise.resolve({type:'product', product:p});
+    return Backend.getUnit(trimmed).then(function(c){
+      if(c) return {type:'unit', carton:c, product:products.get(c.sku)};
+      return {type:'unknown'};
+    });
+  }
+  function unitWord(u){ return (u && u.level==='packet') ? 'packet' : 'carton'; }
+  // Human-readable reason a carton/packet code can't be used for the action being attempted right now.
+  function unitStatusReason(u){
+    switch(u.status){
+      case 'pending': return 'hasn\'t been scanned in yet — receive it in Scan In first';
+      case 'in_stock': return 'is already in stock, ready to ship';
+      case 'shipped': return 'was already shipped'+(u.awb?' (AWB '+u.awb+')':'');
+      case 'opened': return 'was already opened into loose packets';
+      case 'damaged': return 'was already logged as damaged';
+      default: return 'isn\'t available';
+    }
+  }
+  // Adds one scanned unit to a batch, grouped by SKU; refuses to add the same code twice.
+  function addCartonToBatch(batch, sku, code, qtyPackets){
+    var existing=batch.filter(function(b){ return b.sku===sku && b.cartonCodes; })[0];
+    var upc = qtyPackets || (products.get(sku)||{}).unitsPerCarton || 1;
+    if(existing){
+      if(existing.cartonCodes.indexOf(code)>=0) return false;
+      existing.cartonCodes.push(code); existing.qty+=upc;
+    } else {
+      batch.push({sku:sku, qty:upc, cartonCodes:[code]});
+    }
+    return true;
+  }
+  function handleScannedCode(kind, rawCode){
+    var code=(rawCode||'').trim();
+    if(!code) return;
+    resolveScanCode(code).then(function(res){
+      if(res.type==='product'){
+        if(kind==='in'){ addToBatch(batchIn, res.product.sku, 1); renderInBatch(); }
+        else { addToBatch(batchOut, res.product.sku, 1); renderOutBatch(); }
+        AudioFX.success();
+        toast('+1 '+productLabel(res.product));
+      } else if(res.type==='unit'){
+        var targetBatch = kind==='in' ? batchIn : batchOut;
+        var wantStatus = kind==='in' ? 'pending' : 'in_stock';
+        if(res.carton.status!==wantStatus){
+          AudioFX.error();
+          toast('Can\'t '+(kind==='in'?'receive':'ship')+' this '+unitWord(res.carton)+' — it '+unitStatusReason(res.carton)+'.');
+          return;
+        }
+        var added=addCartonToBatch(targetBatch, res.carton.sku, res.carton.code, res.carton.qtyPackets);
+        if(added){
+          AudioFX.success();
+          toast('+1 '+unitWord(res.carton)+' — '+(res.product?productLabel(res.product):res.carton.sku));
+          if(kind==='in') renderInBatch(); else renderOutBatch();
+        } else {
+          AudioFX.error();
+          toast('Already scanned into this '+(kind==='in'?'batch':'parcel')+'.');
+        }
+      } else {
+        AudioFX.error();
+        toast('Unknown code: '+code);
+      }
+    });
+  }
+
+  function renderLookupCard(containerId, p, code, onAdd){
+    var c=document.getElementById(containerId);
+    if(!p){
+      c.innerHTML = code ? '<div class="lookup-empty">No product with code <span class="mono">'+esc(code)+'</span>. Check the Products tab.</div>' : '';
+      return;
+    }
+    c.innerHTML =
+      '<div class="prod-row" style="border:none; padding:6px 0;">'+
+        '<div class="prod-main"><div class="prod-name">'+esc(productLabel(p))+'</div><div class="prod-sub">'+esc(catLabel(p.category))+' &middot; '+esc(cartonsText(p))+' in stock</div></div>'+
+      '</div>'+
+      '<div class="row" style="align-items:flex-end;">'+
+        '<div class="field" style="max-width:120px;"><label>Qty (packets)</label><input type="number" min="1" id="lookupQty" value="1" /></div>'+
+        '<button class="primary" id="lookupAddBtn" type="button">Add to '+(containerId==='inLookup'?'batch':'parcel')+'</button>'+
+      '</div>';
+    document.getElementById('lookupAddBtn').addEventListener('click', function(){
+      var qty=parseInt(document.getElementById('lookupQty').value,10)||1;
+      onAdd(p.sku, qty);
+    });
+  }
+
+  // Scan In
+  var inCodeEl=document.getElementById('inCode');
+  inCodeEl.addEventListener('keydown', function(e){
+    if(e.key!=='Enter') return;
+    var code=inCodeEl.value.trim();
+    if(!code) return;
+    resolveScanCode(code).then(function(res){
+      if(res.type==='product'){
+        renderLookupCard('inLookup', res.product, code, function(sku, qty){
+          addToBatch(batchIn, sku, qty); renderInBatch();
+          AudioFX.success();
+          inCodeEl.value=''; document.getElementById('inLookup').innerHTML=''; inCodeEl.focus();
+        });
+      } else if(res.type==='unit'){
+        inCodeEl.value=''; inCodeEl.focus();
+        if(res.carton.status!=='pending'){
+          AudioFX.error();
+          toast('Can\'t receive this '+unitWord(res.carton)+' — it '+unitStatusReason(res.carton)+'.');
+          return;
+        }
+        var added=addCartonToBatch(batchIn, res.carton.sku, res.carton.code, res.carton.qtyPackets);
+        if(added){ AudioFX.success(); toast('+1 '+unitWord(res.carton)+' — '+(res.product?productLabel(res.product):res.carton.sku)); renderInBatch(); }
+        else { AudioFX.error(); toast('Already scanned into this batch.'); }
+      } else {
+        AudioFX.error();
+        renderLookupCard('inLookup', null, code, function(){});
+        inCodeEl.value=''; inCodeEl.focus();
+      }
+    });
+  });
+  function addToBatch(batch, sku, qty){
+    var existing=batch.filter(function(b){return b.sku===sku;})[0];
+    if(existing) existing.qty+=qty; else batch.push({sku:sku, qty:qty});
+  }
+  function renderInBatch(){
+    var wrap=document.getElementById('inBatchList');
+    document.getElementById('inBatchCount').textContent = batchIn.length+' item'+(batchIn.length===1?'':'s');
+    document.getElementById('inConfirmBtn').disabled = batchIn.length===0;
+    wrap.innerHTML = batchIn.map(function(b,i){
+      var p=products.get(b.sku)||{};
+      var qtyControl = (b.cartonCodes && b.cartonCodes.length)
+        ? '<span class="mono pill neutral" style="white-space:nowrap;">'+b.cartonCodes.length+' scanned</span>'
+        : '<input type="number" min="1" value="'+b.qty+'" data-i="'+i+'" class="inQtyEdit" />';
+      return '<div class="batch-item"><span class="bi-name">'+esc(p.sku?productLabel(p):b.sku)+' <span class="mono" style="color:var(--text-dim)">'+esc(b.sku)+'</span></span>'+
+        qtyControl+
+        '<button class="small ghost" data-i="'+i+'" data-rm="in" type="button">&times;</button></div>';
+    }).join('') || '<div class="empty-state">Scan a product code above to start.</div>';
+  }
+  document.getElementById('inBatchList').addEventListener('click', function(e){
+    if(e.target.dataset.rm==='in'){ batchIn.splice(parseInt(e.target.dataset.i,10),1); renderInBatch(); }
+  });
+  document.getElementById('inBatchList').addEventListener('change', function(e){
+    if(e.target.classList.contains('inQtyEdit')){ batchIn[parseInt(e.target.dataset.i,10)].qty=parseInt(e.target.value,10)||1; }
+  });
+  document.getElementById('inConfirmBtn').addEventListener('click', function(){
+    var btn=this; btn.disabled=true;
+    var items=batchIn.slice();
+    Promise.all(items.map(function(item){
+      if(item.cartonCodes && item.cartonCodes.length){
+        return Promise.all(item.cartonCodes.map(function(code){ return Backend.receiveUnit(code, staffName); }))
+          .then(function(results){
+            var successCodes=[], failedCodes=[], receivedQty=0;
+            item.cartonCodes.forEach(function(code,idx){
+              if(results[idx] && results[idx].ok){ successCodes.push(code); receivedQty+=(results[idx].qtyPackets||1); }
+              else failedCodes.push(code);
+            });
+            return {sku:item.sku, qty:receivedQty, cartonCodes:successCodes.length?successCodes:null, failedCodes:failedCodes};
+          });
+      }
+      return Backend.adjustQty(item.sku, item.qty).then(function(){ return {sku:item.sku, qty:item.qty, cartonCodes:null, failedCodes:[]}; });
+    })).then(function(outcomes){
+      var entries=[], anyFailed=false;
+      outcomes.forEach(function(o){
+        if(o.qty>0){
+          var p=products.get(o.sku)||{};
+          entries.push({id:genId(), type:'in', sku:o.sku, category:p.category||null, brand:p.brand||null, size:p.size||null, variant:p.variant||null, qty:o.qty, staff:staffName||'unknown', note:'', cartons:o.cartonCodes||null, timestamp:nowIso()});
+        }
+        if(o.failedCodes && o.failedCodes.length) anyFailed=true;
+      });
+      var mv = entries.length ? Backend.appendMovements(todayStr(), entries) : Promise.resolve();
+      return mv.then(function(){ return {entries:entries, anyFailed:anyFailed}; });
+    }).then(function(r){
+      if(r.entries.length){
+        recentIn = r.entries.concat(recentIn).slice(0,10);
+        renderRecent('inRecent', recentIn);
+      }
+      batchIn=[]; renderInBatch();
+      if(r.anyFailed){ AudioFX.error(); toast('Inbound recorded, but some scanned labels were no longer pending and were skipped.'); }
+      else { AudioFX.success(); toast('Inbound recorded'); }
+    }).finally(function(){ btn.disabled=false; });
+  });
+
+  // Scan Out
+  var outCodeEl=document.getElementById('outCode');
+  var outAwbEl=document.getElementById('outAwb');
+  outCodeEl.addEventListener('keydown', function(e){
+    if(e.key!=='Enter') return;
+    var code=outCodeEl.value.trim();
+    if(!code) return;
+    resolveScanCode(code).then(function(res){
+      if(res.type==='product'){
+        renderLookupCard('outLookup', res.product, code, function(sku, qty){
+          addToBatch(batchOut, sku, qty); renderOutBatch();
+          AudioFX.success();
+          outCodeEl.value=''; document.getElementById('outLookup').innerHTML=''; outCodeEl.focus();
+        });
+      } else if(res.type==='unit'){
+        outCodeEl.value=''; outCodeEl.focus();
+        if(res.carton.status!=='in_stock'){
+          AudioFX.error();
+          toast('Can\'t ship this '+unitWord(res.carton)+' — it '+unitStatusReason(res.carton)+'.');
+          return;
+        }
+        var added=addCartonToBatch(batchOut, res.carton.sku, res.carton.code, res.carton.qtyPackets);
+        if(added){ AudioFX.success(); toast('+1 '+unitWord(res.carton)+' — '+(res.product?productLabel(res.product):res.carton.sku)); renderOutBatch(); }
+        else { AudioFX.error(); toast('Already scanned into this parcel.'); }
+      } else {
+        AudioFX.error();
+        renderLookupCard('outLookup', null, code, function(){});
+        outCodeEl.value=''; outCodeEl.focus();
+      }
+    });
+  });
+  function renderOutBatch(){
+    var wrap=document.getElementById('outBatchList');
+    document.getElementById('outBatchCount').textContent = batchOut.length+' item'+(batchOut.length===1?'':'s');
+    var warnings=[];
+    wrap.innerHTML = batchOut.map(function(b,i){
+      var p=products.get(b.sku)||{};
+      var projected=(p.qty||0)-b.qty;
+      if(projected<0) warnings.push(productLabel(p)+' would go to '+projected+' packets');
+      var qtyControl = (b.cartonCodes && b.cartonCodes.length)
+        ? '<span class="mono pill neutral" style="white-space:nowrap;">'+b.cartonCodes.length+' scanned</span>'
+        : '<input type="number" min="1" value="'+b.qty+'" data-i="'+i+'" class="outQtyEdit" />';
+      return '<div class="batch-item"><span class="bi-name">'+esc(p.sku?productLabel(p):b.sku)+' <span class="mono" style="color:var(--text-dim)">'+esc(b.sku)+'</span></span>'+
+        qtyControl+
+        '<button class="small ghost" data-i="'+i+'" data-rm="out" type="button">&times;</button></div>';
+    }).join('') || '<div class="empty-state">Scan a product code above to start.</div>';
+    document.getElementById('outWarnings').innerHTML = warnings.length ? '<div class="warn-inline">'+warnings.map(esc).join('<br>')+'</div>' : '';
+    updateOutConfirmState();
+  }
+  document.getElementById('outBatchList').addEventListener('click', function(e){
+    if(e.target.dataset.rm==='out'){ batchOut.splice(parseInt(e.target.dataset.i,10),1); renderOutBatch(); }
+  });
+  document.getElementById('outBatchList').addEventListener('change', function(e){
+    if(e.target.classList.contains('outQtyEdit')){ batchOut[parseInt(e.target.dataset.i,10)].qty=parseInt(e.target.value,10)||1; renderOutBatch(); }
+  });
+  outAwbEl.addEventListener('input', updateOutConfirmState);
+  function updateOutConfirmState(){
+    document.getElementById('outConfirmBtn').disabled = batchOut.length===0 || outAwbEl.value.trim()==='';
+  }
+  document.getElementById('outConfirmBtn').addEventListener('click', function(){
+    var btn=this; btn.disabled=true;
+    var items=batchOut.slice();
+    var awb=outAwbEl.value.trim();
+    Promise.all(items.map(function(item){
+      if(item.cartonCodes && item.cartonCodes.length){
+        return Promise.all(item.cartonCodes.map(function(code){ return Backend.claimUnitForShipment(code, awb, staffName); }))
+          .then(function(results){
+            var successCodes=[], failedCodes=[], claimedQty=0;
+            item.cartonCodes.forEach(function(code,idx){
+              if(results[idx] && results[idx].ok){ successCodes.push(code); claimedQty+=(results[idx].qtyPackets||1); }
+              else failedCodes.push(code);
+            });
+            var p2 = claimedQty>0 ? Backend.adjustQty(item.sku, -claimedQty) : Promise.resolve();
+            return p2.then(function(){ return {sku:item.sku, qty:claimedQty, cartonCodes:successCodes, failedCodes:failedCodes}; });
+          });
+      }
+      return Backend.adjustQtyOut(item.sku, item.qty).then(function(r){ return {sku:item.sku, qty:item.qty, cartonCodes:null, failedCodes:[], ipDelta:r.ipDelta||0}; });
+    })).then(function(outcomes){
+      var entries=[], anyFailed=false;
+      outcomes.forEach(function(o){
+        if(o.qty>0){
+          var p=products.get(o.sku)||{};
+          entries.push({id:genId(), type:'out', sku:o.sku, category:p.category||null, brand:p.brand||null, size:p.size||null, variant:p.variant||null, qty:o.qty, awb:awb, staff:staffName||'unknown', note:'', cartons:o.cartonCodes||null, ipDelta:o.cartonCodes?null:(o.ipDelta||0), timestamp:nowIso()});
+        }
+        if(o.failedCodes && o.failedCodes.length) anyFailed=true;
+      });
+      var mv = entries.length ? Backend.appendMovements(todayStr(), entries) : Promise.resolve();
+      return mv.then(function(){ return {entries:entries, anyFailed:anyFailed}; });
+    }).then(function(r){
+      if(r.entries.length){
+        recentOut = r.entries.concat(recentOut).slice(0,10);
+        renderRecent('outRecent', recentOut);
+      }
+      batchOut=[]; outAwbEl.value=''; renderOutBatch();
+      if(r.anyFailed){ AudioFX.error(); toast('Shipment recorded, but some scanned cartons were already used elsewhere and were skipped.'); }
+      else { AudioFX.success(); toast('Shipment recorded — AWB '+awb); }
+    }).finally(function(){ btn.disabled=false; });
+  });
+
+  function renderRecent(containerId, entries){
+    var c=document.getElementById(containerId);
+    if(!entries.length){ c.className='empty-state'; c.textContent='Nothing recorded yet this session.'; return; }
+    c.className='';
+    c.innerHTML = entries.map(function(e){
+      var p=products.get(e.sku)||{};
+      return '<div class="prod-row"><div class="prod-main"><div class="prod-name">'+esc(p.brand?productLabel(p):e.sku)+'</div>'+
+        '<div class="prod-sub">'+(e.awb?'AWB '+esc(e.awb)+' &middot; ':'')+esc(e.staff)+'</div></div>'+
+        '<div class="prod-qty"><span class="big">'+e.qty+'</span></div></div>';
+    }).join('');
+  }
+
+  // ---------------- AWB lookup ----------------
+  document.getElementById('awbSearchBtn').addEventListener('click', function(){
+    var q=document.getElementById('awbQuery').value.trim().toLowerCase();
+    var box=document.getElementById('awbResult');
+    if(!q){ box.innerHTML=''; return; }
+    box.innerHTML='<div class="empty-state">Searching&hellip;</div>';
+    Backend.getAllMovementDays().then(function(days){
+      var matches=[];
+      days.forEach(function(d){ d.entries.forEach(function(e){ if(e.type==='out' && (e.awb||'').toLowerCase().trim()===q) matches.push(e); }); });
+      if(!matches.length){ box.innerHTML='<div class="empty-state">No shipment found for that AWB.</div>'; return; }
+      var totalQty=matches.reduce(function(a,e){return a+(e.qty||0);},0);
+      var html='<div class="pill neutral" style="margin-bottom:10px;">'+matches.length+' item'+(matches.length===1?'':'s')+' &middot; '+totalQty+' packets</div>';
+      html += matches.map(function(e){
+        var p=products.get(e.sku)||{};
+        return '<div class="prod-row"><div class="prod-main"><div class="prod-name">'+esc(p.brand?productLabel(p):e.sku)+'</div><div class="prod-sub">'+esc(e.sku)+' &middot; '+esc(e.staff)+' &middot; '+new Date(e.timestamp).toLocaleString()+'</div></div><div class="prod-qty"><span class="big">'+e.qty+'</span></div></div>';
+      }).join('');
+      box.innerHTML=html;
+    });
+  });
+  document.getElementById('awbQuery').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('awbSearchBtn').click(); });
+
+  // ---------------- Returns ----------------
+  var recentReturns=[];
+  function populateReturnProductSelect(){
+    var sel=document.getElementById('retManualProduct');
+    if(!sel) return;
+    var cur=sel.value;
+    var list=Array.from(products.values()).sort(function(a,b){ return productLabel(a)<productLabel(b)?-1:1; });
+    sel.innerHTML = list.length
+      ? list.map(function(p){ return '<option value="'+esc(p.sku)+'">'+esc(productLabel(p))+' &mdash; '+esc(p.sku)+'</option>'; }).join('')
+      : '<option value="">Add a product first</option>';
+    if(cur && products.has(cur)) sel.value=cur;
+  }
+  function resolveReturnCode(code){
+    var trimmed=(code||'').trim();
+    var p=lookupProduct(trimmed);
+    if(p) return Promise.resolve({type:'product', product:p});
+    return Backend.getUnit(trimmed).then(function(u){
+      if(u) return {type:'unit', carton:u, product:products.get(u.sku)};
+      return {type:'unknown'};
+    });
+  }
+  function renderReturnLookupCard(res, code){
+    var c=document.getElementById('retLookup');
+    var product = res.product || {};
+    var statusLine = res.type==='unit'
+      ? '<div class="prod-sub">Code: <span class="mono">'+esc(res.carton.code)+'</span> &middot; status: '+esc(res.carton.status)+(res.carton.awb?(' &middot; AWB '+esc(res.carton.awb)):'')+'</div>'
+      : '';
+    c.innerHTML =
+      '<div class="prod-row" style="border:none; padding:6px 0;">'+
+        '<div class="prod-main"><div class="prod-name">'+esc(product.sku?productLabel(product):code)+'</div>'+statusLine+'</div>'+
+      '</div>'+
+      (res.type==='product' ? '<div class="field" style="max-width:140px;"><label>Qty (packets)</label><input type="number" min="1" id="retQty" value="1" /></div>' : '')+
+      '<div class="row">'+
+        '<button class="primary" id="retGoodBtn" type="button">&#9989; Good &mdash; return to stock</button>'+
+        '<button class="danger-outline" id="retBadBtn" type="button">&#9888; Damaged / wrong item</button>'+
+      '</div>';
+    document.getElementById('retGoodBtn').addEventListener('click', function(){ submitReturn(res, code, 'good'); });
+    document.getElementById('retBadBtn').addEventListener('click', function(){ submitReturn(res, code, 'damaged'); });
+  }
+  function submitReturn(res, code, condition){
+    var qty = res.type==='product' ? (parseInt(document.getElementById('retQty').value,10)||1) : null;
+    var action = res.type==='unit'
+      ? Backend.returnUnit(res.carton.code, condition, staffName)
+      : Backend.returnBySku(res.product.sku, qty, condition, staffName);
+    action.then(function(result){
+      if(!result || result.ok===false){
+        AudioFX.error();
+        if(result && result.reason==='not_shipped') toast('This code isn\'t currently marked as shipped (it may be unused, opened, or already returned), so it can\'t be returned.');
+        else toast('Could not process this return — code not found.');
+        return;
+      }
+      var sku = res.type==='unit' ? result.sku : res.product.sku;
+      var p = products.get(sku) || res.product || {};
+      var finalQty = res.type==='unit' ? (result.qtyPackets||1) : qty;
+      return Backend.appendMovements(todayStr(), [{
+        id:genId(), type:'return', condition:condition, sku:sku, category:p.category||null, brand:p.brand||null, size:p.size||null, variant:p.variant||null,
+        qty:finalQty, staff:staffName||'unknown', note: res.type==='unit' ? ('Scanned '+code) : 'Manual return',
+        cartons: res.type==='unit' ? [res.carton.code] : null, timestamp:nowIso()
+      }]).then(function(){
+        AudioFX.success();
+        toast((condition==='good'?'Returned to stock — ':'Logged as damaged — ')+productLabel(p));
+        recentReturns=[{sku:sku, qty:finalQty, condition:condition, staff:staffName||'unknown', timestamp:nowIso()}].concat(recentReturns).slice(0,10);
+        renderReturnsRecent();
+        document.getElementById('retLookup').innerHTML='';
+        document.getElementById('retCode').value=''; document.getElementById('retCode').focus();
+      });
+    });
+  }
+  function renderReturnsRecent(){
+    var c=document.getElementById('retRecent');
+    if(!recentReturns.length){ c.className='empty-state'; c.textContent='Nothing recorded yet this session.'; return; }
+    c.className='';
+    c.innerHTML = recentReturns.map(function(e){
+      var p=products.get(e.sku)||{};
+      var pill = e.condition==='damaged' ? '<span class="pill danger">damaged</span>' : '<span class="pill success">good</span>';
+      return '<div class="prod-row"><div class="prod-main"><div class="prod-name">'+esc(p.brand?productLabel(p):e.sku)+'</div>'+
+        '<div class="prod-sub">'+pill+' &middot; '+esc(e.staff)+'</div></div>'+
+        '<div class="prod-qty"><span class="big">'+e.qty+'</span></div></div>';
+    }).join('');
+  }
+  document.getElementById('retCode').addEventListener('keydown', function(e){
+    if(e.key!=='Enter') return;
+    var code=this.value.trim();
+    if(!code) return;
+    resolveReturnCode(code).then(function(res){
+      if(res.type==='unknown'){
+        AudioFX.error();
+        document.getElementById('retLookup').innerHTML='<div class="lookup-empty">No product or carton/packet found for <span class="mono">'+esc(code)+'</span>.</div>';
+        return;
+      }
+      AudioFX.success();
+      renderReturnLookupCard(res, code);
+    });
+  });
+  document.getElementById('retManualGoodBtn').addEventListener('click', function(){ submitManualReturn('good'); });
+  document.getElementById('retManualBadBtn').addEventListener('click', function(){ submitManualReturn('damaged'); });
+  function submitManualReturn(condition){
+    var sku=document.getElementById('retManualProduct').value;
+    var qty=parseInt(document.getElementById('retManualQty').value,10)||0;
+    var awb=document.getElementById('retManualAwb').value.trim();
+    if(!sku){ toast('Add a product first.'); return; }
+    if(qty<1){ toast('Enter a qty of at least 1.'); return; }
+    Backend.returnBySku(sku, qty, condition, staffName).then(function(){
+      var p=products.get(sku)||{};
+      return Backend.appendMovements(todayStr(), [{
+        id:genId(), type:'return', condition:condition, sku:sku, category:p.category||null, brand:p.brand||null, size:p.size||null, variant:p.variant||null,
+        qty:qty, awb:awb||null, staff:staffName||'unknown', note:'Manual return (no barcode)', cartons:null, timestamp:nowIso()
+      }]);
+    }).then(function(){
+      AudioFX.success();
+      toast((condition==='good'?'Returned to stock — ':'Logged as damaged — ')+qty+' pkt');
+      recentReturns=[{sku:sku, qty:qty, condition:condition, staff:staffName||'unknown', timestamp:nowIso()}].concat(recentReturns).slice(0,10);
+      renderReturnsRecent();
+      document.getElementById('retManualQty').value=1; document.getElementById('retManualAwb').value='';
+    }).catch(function(){ AudioFX.error(); toast('Could not process this return.'); });
+  }
+  document.getElementById('retCamBtn').addEventListener('click', function(){
+    CameraScanner.open(function(code){
+      resolveReturnCode(code).then(function(res){
+        if(res.type==='unknown'){ AudioFX.error(); toast('Unknown code: '+code); return; }
+        AudioFX.success();
+        renderReturnLookupCard(res, code);
+      });
+    });
+  });
+
+  // ---------------- In Progress (open cartons into loose packets) ----------------
+  var recentOpens=[];
+  function renderInProgressList(){
+    var c=document.getElementById('inProgressList');
+    if(!c) return;
+    var list=Array.from(products.values()).filter(function(p){ return (p.inProgressQty||0)>0; })
+      .sort(function(a,b){ return productLabel(a)<productLabel(b)?-1:1; });
+    if(!list.length){ c.className='empty-state'; c.textContent='No cartons opened yet.'; return; }
+    c.className='';
+    c.innerHTML = list.map(function(p){
+      return '<div class="prod-row"><div class="prod-main"><div class="prod-name">'+esc(productLabel(p))+'</div>'+
+        '<div class="prod-sub">'+esc(p.sku)+'</div></div>'+
+        '<div class="prod-qty"><span class="big">'+(p.inProgressQty||0)+'</span></div></div>';
+    }).join('');
+  }
+  function renderOpenRecent(){
+    var c=document.getElementById('openRecent');
+    if(!recentOpens.length){ c.className='empty-state'; c.textContent='Nothing recorded yet this session.'; return; }
+    c.className='';
+    c.innerHTML = recentOpens.map(function(e){
+      var p=products.get(e.sku)||{};
+      return '<div class="prod-row"><div class="prod-main"><div class="prod-name">'+esc(p.brand?productLabel(p):e.sku)+'</div>'+
+        '<div class="prod-sub">'+esc(e.code)+' &middot; '+esc(e.staff)+'</div></div>'+
+        '<div class="prod-qty"><span class="big">+'+e.qty+'</span></div></div>';
+    }).join('');
+  }
+  function submitOpenCarton(code){
+    var box=document.getElementById('openCartonLookup');
+    Backend.openCarton(code, staffName).then(function(result){
+      if(!result || result.ok===false){
+        AudioFX.error();
+        var msg = 'Unknown carton code: '+code;
+        if(result && result.reason==='not_a_carton') msg = 'That\'s a packet code, not a carton &mdash; packets can\'t be opened further.';
+        else if(result && result.reason==='already_used') msg = 'Can\'t open this carton &mdash; it '+(result.data?unitStatusReason(result.data):'isn\'t available')+'.';
+        toast(msg.replace('&mdash;','—'));
+        if(box) box.innerHTML = '<div class="lookup-empty">'+msg+'</div>';
+        return;
+      }
+      var p=products.get(result.sku)||{};
+      return Backend.appendMovements(todayStr(), [{
+        id:genId(), type:'open', sku:result.sku, category:p.category||null, brand:p.brand||null, size:p.size||null, variant:p.variant||null,
+        qty:result.qtyPackets, staff:staffName||'unknown', note:'Opened '+code, cartons:[code], timestamp:nowIso()
+      }]).then(function(){
+        AudioFX.success();
+        toast('Opened into '+result.qtyPackets+' loose packet'+(result.qtyPackets===1?'':'s')+' — '+(p.sku?productLabel(p):result.sku));
+        if(box) box.innerHTML='';
+        recentOpens=[{sku:result.sku, qty:result.qtyPackets, code:code, staff:staffName||'unknown', timestamp:nowIso()}].concat(recentOpens).slice(0,10);
+        renderOpenRecent();
+        renderInProgressList();
+      });
+    });
+  }
+  document.getElementById('openCartonCode').addEventListener('keydown', function(e){
+    if(e.key!=='Enter') return;
+    var code=this.value.trim();
+    if(!code) return;
+    this.value=''; this.focus();
+    submitOpenCarton(code);
+  });
+  document.getElementById('openCartonCamBtn').addEventListener('click', function(){
+    CameraScanner.open(function(code){ submitOpenCarton(code); });
+  });
+
+  // ---------------- History ----------------
+  function renderHistory(){
+    Backend.getAllMovementDays().then(function(days){
+      histCache=[];
+      days.forEach(function(d){ d.entries.forEach(function(e){ e._day=d.id; histCache.push(e); }); });
+      histCache.sort(function(a,b){ return a.timestamp<b.timestamp?1:-1; });
+      drawHistory();
+    });
+  }
+  document.getElementById('histType').addEventListener('change', drawHistory);
+  document.getElementById('histSearch').addEventListener('input', drawHistory);
+  function drawHistory(){
+    if(!histCache) return;
+    var type=document.getElementById('histType').value;
+    var q=document.getElementById('histSearch').value.toLowerCase();
+    var rows=histCache.filter(function(e){
+      if(type && e.type!==type) return false;
+      if(q){
+        var hay=[e.sku,e.awb,e.staff,e.note].join(' ').toLowerCase();
+        if(hay.indexOf(q)<0) return false;
+      }
+      return true;
+    });
+    var tbody=document.querySelector('#histTable tbody');
+    tbody.innerHTML = rows.slice(0,300).map(function(e){
+      var p=products.get(e.sku)||{};
+      var cls = e.type==='in'?'success':(e.type==='out'?'neutral':(e.type==='return'?(e.condition==='damaged'?'danger':'success'):(e.type==='open'?'neutral':'warn')));
+      var label = e.type==='return' ? ('return'+(e.condition?(' ('+e.condition+')'):'')) : (e.type==='open'?'opened carton':e.type);
+      var actionCell = e.voided
+        ? '<span class="pill neutral">voided</span>'
+        : (e.id && isAdminUser() ? '<button class="small ghost" data-day="'+esc(e._day)+'" data-id="'+esc(e.id)+'" data-voidbtn type="button">Void</button>' : '');
+      return '<tr'+(e.voided?' style="opacity:.5;"':'')+'><td>'+new Date(e.timestamp).toLocaleString()+'</td><td><span class="pill '+cls+'">'+esc(label)+'</span></td>'+
+        '<td>'+esc(p.brand?productLabel(p):e.sku)+'<br><span class="mono prod-sub">'+esc(e.sku)+'</span></td>'+
+        '<td class="num-col">'+(e.type==='out'?'-':(e.type==='open'?'':'+'))+Math.abs(e.qty)+'</td>'+
+        '<td>'+esc(e.awb||'')+'</td><td>'+esc(e.staff||'')+'</td><td>'+actionCell+'</td></tr>';
+    }).join('') || '<tr><td colspan="7" class="empty-state">No movements match.</td></tr>';
+    window._histFiltered=rows;
+  }
+  document.querySelector('#histTable tbody').addEventListener('click', function(e){
+    var btn=e.target.closest('button[data-voidbtn]');
+    if(!btn) return;
+    var day=btn.dataset.day, id=btn.dataset.id;
+    var entry=(histCache||[]).filter(function(x){ return x._day===day && x.id===id; })[0];
+    var what = entry ? (entry.type==='return' ? ('return'+(entry.condition?(' ('+entry.condition+')'):'')) : (entry.type==='open'?'opened carton':entry.type)) : 'this entry';
+    askConfirm('Void this '+what+'?', 'This reverses its stock effect (and, for a scanned carton/packet code, puts that code back to where it was before this entry). The entry stays in History marked as voided rather than being deleted. Only works if nothing has moved further since.').then(function(yes){
+      if(!yes) return;
+      Backend.voidMovement(day, id, staffName).then(function(r){
+        if(r.ok){ AudioFX.success(); toast('Voided'); renderHistory(); }
+        else {
+          AudioFX.error();
+          var msg='Could not void this entry.';
+          if(r.reason==='would_go_negative') msg='Can\'t void — reversing this would push stock below zero (something else already moved it).';
+          else if(r.reason==='code_moved') msg='Can\'t void — code '+(r.code||'')+' has already moved on to another status since this entry.';
+          else if(r.reason==='code_missing') msg='Can\'t void — a code from this entry no longer exists.';
+          else if(r.reason==='product_missing') msg='Can\'t void — the product this entry belongs to no longer exists.';
+          else if(r.reason==='already_voided') msg='This entry was already voided.';
+          toast(msg);
+        }
+      });
+    });
+  });
+  document.getElementById('exportHistoryBtn').addEventListener('click', function(){
+    var rows=[['When','Type','Condition','SKU','Qty','AWB','Staff','Note','Cartons']];
+    (window._histFiltered||[]).forEach(function(e){
+      rows.push([e.timestamp, e.type, e.condition||'', e.sku, e.qty, e.awb||'', e.staff||'', e.note||'', (e.cartons||[]).join(' ')]);
+    });
+    downloadCsv('movement-history-'+todayStr()+'.csv', rows);
+  });
+
+  // ---------------- Admin (users) ----------------
+  function renderAdmin(){
+    if(!(currentUser && currentUser.role==='admin')) return;
+    Backend.listUsers().then(function(users){
+      var wrap=document.getElementById('userList');
+      wrap.innerHTML = users.map(function(u){
+        var isMe = u.uid===currentUser.uid;
+        var pill = u.disabled ? '<span class="pill danger">disabled</span>' : '<span class="pill success">active</span>';
+        var rolePill = '<span class="pill '+(u.role==='admin'?'warn':'neutral')+'">'+(u.role==='admin'?'admin':'staff')+'</span>';
+        var actions = isMe
+          ? '<span style="color:var(--text-dim); font-size:12.5px;">This is you</span>'
+          : ('<button class="small" data-uact="'+(u.disabled?'enable':'disable')+'" data-uid="'+esc(u.uid)+'" type="button">'+(u.disabled?'Enable':'Disable')+'</button>'+
+             '<button class="small ghost" data-uact="'+(u.role==='admin'?'makestaff':'makeadmin')+'" data-uid="'+esc(u.uid)+'" type="button">'+(u.role==='admin'?'Make staff':'Make admin')+'</button>');
+        return '<div class="prod-row"><div class="prod-main"><div class="prod-name">'+esc(u.username)+(isMe?' (you)':'')+'</div>'+
+          '<div class="prod-sub">'+pill+' '+rolePill+'</div></div>'+
+          '<div class="prod-actions">'+actions+'</div></div>';
+      }).join('') || '<div class="empty-state">No logins yet.</div>';
+    });
+  }
+  document.getElementById('userList').addEventListener('click', function(e){
+    var btn=e.target.closest('button[data-uact]');
+    if(!btn) return;
+    var uid=btn.dataset.uid, act=btn.dataset.uact;
+    if(uid===currentUser.uid){ toast('You can\'t change your own access from here.'); return; }
+    var patch = act==='disable' ? {disabled:true} : act==='enable' ? {disabled:false}
+      : act==='makeadmin' ? {role:'admin'} : {role:'staff'};
+    var confirmMsg = act==='disable' ? 'They\'ll be signed out and blocked from logging in again until re-enabled.'
+      : act==='makeadmin' ? 'They\'ll be able to manage other logins and delete products / void history entries.'
+      : act==='makestaff' ? 'They\'ll lose access to the Admin tab.' : 'They\'ll be able to log in again.';
+    askConfirm('Are you sure?', confirmMsg).then(function(yes){
+      if(!yes) return;
+      Backend.setUserFlags(uid, patch).then(function(){ toast('Updated'); renderAdmin(); })
+        .catch(function(){ toast('Could not update this login.'); });
+    });
+  });
+  document.getElementById('createUserBtn').addEventListener('click', function(){
+    var username=document.getElementById('newUserId').value.trim().toLowerCase();
+    var password=document.getElementById('newUserPass').value;
+    var role=document.getElementById('newUserRole').value;
+    var msg=document.getElementById('createUserMsg'); msg.hidden=true;
+    if(!/^[a-z0-9._-]{2,30}$/.test(username)){ msg.textContent='User ID: 2-30 characters, letters/numbers/._- only.'; msg.hidden=false; return; }
+    if(password.length<6){ msg.textContent='Password must be at least 6 characters.'; msg.hidden=false; return; }
+    var btn=this; btn.disabled=true;
+    Backend.createUser(username, password, role, currentUser.username).then(function(r){
+      if(r.ok){
+        AudioFX.success(); toast('Login created — '+username);
+        document.getElementById('newUserId').value=''; document.getElementById('newUserPass').value=''; document.getElementById('newUserRole').value='staff';
+        renderAdmin();
+      } else {
+        msg.textContent = r.reason==='taken' ? 'That user ID is already taken.' : r.reason==='weak_password' ? 'Password is too weak — use at least 6 characters.' : 'Could not create this login.';
+        msg.hidden=false;
+      }
+    }).finally(function(){ btn.disabled=false; });
+  });
+
+  document.getElementById('inCamBtn').addEventListener('click', function(){
+    CameraScanner.open(function(code){ handleScannedCode('in', code); });
+  });
+  document.getElementById('outCamBtn').addEventListener('click', function(){
+    CameraScanner.open(function(code){ handleScannedCode('out', code); });
+  });
+
+  // ---------------- Boot ----------------
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+  }
+  CameraScanner.init();
+
+  function startApp(){
+    document.getElementById('loginScreen').hidden=true;
+    document.getElementById('appRoot').hidden=false;
+    refreshStaffChip();
+    document.getElementById('adminNavBtn').hidden = !(currentUser && currentUser.role==='admin');
+    Backend.subscribeProducts(function(map){ products=map; rerenderIfActive(['dashboard','products','inprogress','admin']); renderInBatch(); renderOutBatch(); populateGenUnitSelect(); populateReturnProductSelect(); });
+    Backend.subscribeToday(function(entries){ todayEntries=entries; rerenderIfActive(['dashboard']); });
+    renderInBatch(); renderOutBatch();
+    showTab('dashboard');
+  }
+  function showLoginError(msg){
+    var el=document.getElementById('loginError');
+    el.textContent=msg; el.hidden=false;
+  }
+  document.getElementById('loginBtn').addEventListener('click', function(){
+    var u=document.getElementById('loginUser').value.trim();
+    var p=document.getElementById('loginPass').value;
+    var el=document.getElementById('loginError'); el.hidden=true;
+    if(!u||!p){ showLoginError('Enter your user ID and password.'); return; }
+    var btn=document.getElementById('loginBtn'); btn.disabled=true;
+    Backend.login(u,p).catch(function(err){
+      var msg='Could not log in — check your user ID and password.';
+      if(err && err.code==='auth/too-many-requests') msg='Too many attempts — wait a bit and try again.';
+      showLoginError(msg);
+    }).finally(function(){ btn.disabled=false; });
+  });
+  document.getElementById('loginPass').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('loginBtn').click(); });
+  document.getElementById('loginUser').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('loginPass').focus(); });
+
+  Backend.init().then(function(mode){
+    if(mode==='fallback'){
+      // No shared backend, so no login concept — behave exactly as before this feature.
+      document.getElementById('loginScreen').hidden=true;
+      refreshStaffChip();
+      if(!staffName) openNameOverlay();
+      startApp();
+      return;
+    }
+    // Live mode: everything is gated behind a real sign-in from here on.
+    var appStarted=false;
+    firebase.auth().onAuthStateChanged(function(user){
+      if(!user){
+        document.getElementById('appRoot').hidden=true;
+        document.getElementById('loginScreen').hidden=false;
+        currentUser=null; staffName=''; appStarted=false;
+        return;
+      }
+      Backend.getUserDoc(user.uid).then(function(udoc){
+        if(!udoc){
+          showLoginError('Your account isn\'t set up yet — ask your admin to create your login.');
+          return Backend.logout();
+        }
+        if(udoc.disabled){
+          showLoginError('Your access has been disabled — ask your admin to re-enable it.');
+          return Backend.logout();
+        }
+        currentUser={uid:user.uid, username:udoc.username, role:udoc.role, disabled:udoc.disabled};
+        staffName=udoc.username;
+        if(!appStarted){ appStarted=true; startApp(); }
+        else { refreshStaffChip(); document.getElementById('adminNavBtn').hidden = currentUser.role!=='admin'; }
+      }).catch(function(err){
+        console.warn('user doc lookup failed', err);
+        showLoginError('Could not verify your account — check your connection and try again.');
+        Backend.logout();
+      });
+    });
+  });
+})();
+</script>
